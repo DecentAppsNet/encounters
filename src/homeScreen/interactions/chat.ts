@@ -32,7 +32,7 @@ function _addNarrationLine(line:string, setLines:Function) {
 
 function _onUpdateResponse(responseText:string, setLines:Function) {
   if (!theChatBuffer) throw Error('Unexpected');
-  const displayText = responseText; // stripOutcomeCodes(responseText);
+  const displayText = stripOutcomeCodes(responseText);
   theChatBuffer.replaceLastLine(`${displayText}${GENERATING}`);
   setLines(theChatBuffer.lines);
 }
@@ -43,7 +43,7 @@ function _finalizeResponse(responseText:string, setLines:Function) {
   if (outcomeText) {
     theChatBuffer.replaceLastLine(`${NARRATIVE_PREFIX}${outcomeText}`);
   } else {
-    const displayText = responseText; // stripOutcomeCodes(responseText);
+    const displayText = stripOutcomeCodes(responseText);
     theChatBuffer.replaceLastLine(displayText);
   }
   setLines(theChatBuffer.lines);
