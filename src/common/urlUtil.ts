@@ -13,7 +13,7 @@ export function parseBasePathFromUriPath(path:string) {
   return isStagedApp ? `/${appName}/${pathSegments[1]}/` : `/${appName}/`;
 }
 
-/* istanbul ignore next */ // Web-DOM-specific code that is not useful to test.
+/* v8 ignore next */ // Web-DOM-specific code that is not useful to test.
 function _getBasePath() {
   if (!theBasePath) { theBasePath = parseBasePathFromUriPath(window.location.pathname); }
   return theBasePath;

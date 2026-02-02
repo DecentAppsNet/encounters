@@ -8,7 +8,7 @@ type EncounterV0 = {
   startActions:Action[],
   instructionActions:Action[],
   characterTriggers:CharacterTrigger[],
-  sourceText?:string
+  sourceText:string|null // For authoring use cases, source text is needed to preserve comments and formatting. For playback-only use cases, this can be null.
 }
 
 export default EncounterV0;

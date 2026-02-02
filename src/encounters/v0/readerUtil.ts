@@ -1,10 +1,11 @@
 import { assert } from "decent-portal";
 import { parseNameValueLines, parseSections } from "../markdownUtil";
 import Encounter from "./types/Encounter";
-import Action from "./types/Action";
+import Action, { CodeAction, MessageAction } from "./types/Action";
 import ActionType from "./types/ActionType";
 import CharacterTrigger from "./types/CharacterTrigger";
 import { parseVersion } from "../versionUtil";
+import { textToCode } from "@/spielCode/codeUtil";
 
 function _stripEnclosers(text:string, enclosingText:string):string {
   text = text.trim();
@@ -14,20 +15,33 @@ function _stripEnclosers(text:string, enclosingText:string):string {
     : text.substring(enclosingText.length).trim();
 }
 
-function _lineToAction(line:string):Action|null {
-  let action:Action|null = null;
-  if (line.startsWith('**')) {
-    action = {
-      actionType:ActionType.INSTRUCTION_MESSAGE,
-      payload:_stripEnclosers(line,'**')
-    }
-  } else if (line.startsWith('_')) {
-    action = {
-      actionType:ActionType.DISPLAY_MESSAGE,
-      payload:_stripEnclosers(line,'_')
-    }
-  }
+function _parseMessageAction(line:string, encloser:string, actionType:ActionType):Action {
+  line = _stripEnclosers(line, encloser);
+  const action:Action = { actionType, message:line, criteria:null } as Action;
+  
+  // Find a conditional code block if there is one.
+  const startPos = line.indexOf('`');
+  if (startPos === -1) return action;
+  const endPos = line.indexOf('`', startPos+1);
+  if (endPos === -1) return action;
+  if (line.indexOf('`', endPos+1) !== -1) throw Error('Multiple code blocks found in message line - only one allowed.');
+  const codeText = `result=${line.substring(startPos+1, endPos)}`; // "result=" - converts the concise expression format to a statement.
+  (action as MessageAction).message = `${line.substring(0, startPos - 1)}${line.substring(endPos+1)}`;
+  (action as MessageAction).criteria = textToCode(codeText);
   return action;
+}
+
+function _parseCodeAction(line:string):CodeAction {
+  line = _stripEnclosers(line, '`');
+  const code = textToCode(line);
+  return { actionType:ActionType.CODE, code };
+}
+
+function _lineToAction(line:string):Action|null {
+  if (line.startsWith('**')) return _parseMessageAction(line, '**', ActionType.INSTRUCTION_MESSAGE);
+  if (line.startsWith('_')) return _parseMessageAction(line, '_', ActionType.DISPLAY_MESSAGE);
+  if (line.startsWith('`')) return _parseCodeAction(line);
+  return null;
 }
 
 function _parseActions(sectionContent:string):Action[] {

@@ -1,6 +1,7 @@
 import  exampleText from './encounterExample';
 import { textToEncounter } from '../readerUtil';
 import ActionType from '../types/ActionType';
+import { DisplayMessageAction, InstructionMessageAction } from '../types/Action';
 
 describe('readerUtil', () => {
   it('reads a minimal text', () => {
@@ -29,17 +30,17 @@ describe('readerUtil', () => {
     expect(encounter.startActions.length).toBe(1);
     let a = encounter.startActions[0];
     expect(a.actionType).toBe(ActionType.DISPLAY_MESSAGE);
-    expect(a.payload).toBe('As you attempt to cross a bridge, a troll emerges from beneath it, blocking your path. The troll seems disinclined to let you past.');
+    expect((a as DisplayMessageAction).message).toBe('As you attempt to cross a bridge, a troll emerges from beneath it, blocking your path. The troll seems disinclined to let you past.');
     expect(encounter.instructionActions.length).toBe(2);
     a = encounter.instructionActions[0];
     expect(a.actionType).toBe(ActionType.INSTRUCTION_MESSAGE);
-    expect(a.payload).toBe('You are a troll guarding a bridge.');
+    expect((a as InstructionMessageAction).message).toBe('You are a troll guarding a bridge.');
     expect(encounter.characterTriggers.length).toBe(3);
     const c = encounter.characterTriggers[0];
     expect(c.criteria).toBe("user describes something you've never heard of before");
     expect(c.actions.length).toBe(1);
     a = c.actions[0];
     expect(a.actionType).toBe(ActionType.DISPLAY_MESSAGE);
-    expect(a.payload).toBe('The troll reluctantly allows you to pass. Victory!');
+    expect((a as DisplayMessageAction).message).toBe('The troll reluctantly allows you to pass. Victory!');
   });
 });

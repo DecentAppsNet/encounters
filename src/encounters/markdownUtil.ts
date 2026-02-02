@@ -17,7 +17,7 @@ function _isSectionContentLine(line:string):boolean {
   const trimmedLine = line.trim();
   assert(trimmedLine.length !== 0); // Calling code should already have filtered out empty lines.
   const firstChar = trimmedLine[0];
-  return firstChar === '*' || firstChar === '>' || firstChar === '#' || firstChar === '_';
+  return firstChar === '*' || firstChar === '>' || firstChar === '#' || firstChar === '_' || firstChar === '`'; // TODO - do I want this filtering here? It seems coupled to the format too much.
 }
 
 // Parse the heading sections of a markdown text. The header of each section is the section name, and the content of each section is the value for the section.

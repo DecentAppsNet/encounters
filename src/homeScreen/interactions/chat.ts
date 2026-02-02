@@ -3,9 +3,11 @@ import TextConsoleBuffer from "@/components/textConsole/TextConsoleBuffer";
 import { isServingLocally } from "@/developer/devEnvUtil";
 import { findCharacterTriggerInText, stripTriggerCodes } from "@/encounters/encounterUtil";
 import Encounter from "@/encounters/types/Encounter";
-import Action from "@/encounters/v0/types/Action";
+import Action, { MessageAction } from "@/encounters/v0/types/Action";
 import ActionType from "@/encounters/v0/types/ActionType";
 import { clearChatHistory, generate, isLlmConnected, setSystemMessage } from "@/llm/llmUtil";
+import { executeCode } from "@/spielCode/codeUtil";
+import VariableManager from "@/spielCode/VariableManager";
 import { assertNonNullable } from "decent-portal";
 
 export const GENERATING = '...';
@@ -13,6 +15,7 @@ const MAX_LINE_COUNT = 100;
 
 let theChatBuffer:TextConsoleBuffer|null = null;
 let theEncounter:Encounter|null = null;
+let theSessionVariables:VariableManager|null = null;
 
 function _isLastLineGenerating():boolean {
   assertNonNullable(theChatBuffer);
@@ -47,6 +50,13 @@ function _onUpdateResponse(responseText:string, setLines:Function) {
   setLines(theChatBuffer.lines)
 }
 
+function _actionCriteriaMet(action:MessageAction):boolean {
+  if (!action.criteria) return true;
+  assertNonNullable(theSessionVariables); 
+  executeCode(action.criteria, theSessionVariables);
+  return theSessionVariables.get('result') === true;
+}
+
 function _handleActions(actions:Action[]):string {
   assertNonNullable(theChatBuffer);
   let systemMessage = '';
@@ -54,13 +64,23 @@ function _handleActions(actions:Action[]):string {
     const action = actions[i];
     switch(action.actionType) {
       case ActionType.DISPLAY_MESSAGE:
-        _addChatBufferLine(`${NARRATIVE_PREFIX}${action.payload}`);
+        if (_actionCriteriaMet(action)) _addChatBufferLine(`${NARRATIVE_PREFIX}${action.message}`);
       break;
       
       case ActionType.INSTRUCTION_MESSAGE:
-        if (systemMessage.length) systemMessage += '\n';
-        systemMessage += action.payload;
+        if (_actionCriteriaMet(action)) {
+          if (systemMessage.length) systemMessage += '\n';
+          systemMessage += action.message;
+        }
       break;
+
+      case ActionType.CODE:
+        assertNonNullable(theSessionVariables);
+        executeCode(action.code, theSessionVariables);
+      break;
+
+      default:
+        throw Error('Unexpected');
     }
   }
   return systemMessage;
@@ -91,6 +111,8 @@ function _initForEncounter(encounter:Encounter) {
   assertNonNullable(theChatBuffer);
   theChatBuffer.clear();
   theEncounter = encounter;
+  theSessionVariables = new VariableManager();
+  theSessionVariables.set('encounterTitle', encounter.title); // TODO - delete this later. Just getting past a compile error.
   const systemMessage = _encounterToSystemMessage(encounter);
   setSystemMessage(systemMessage);
   clearChatHistory();
