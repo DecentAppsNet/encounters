@@ -6,7 +6,7 @@ import LoadScreen from '@/loadScreen/LoadScreen';
 import TopBar from '@/components/topBar/TopBar';
 import Chat from "@/components/chat/Chat";
 import { TextConsoleLine } from "@/components/textConsole/TextConsoleBuffer";
-import { submitPrompt, updateEncounter } from "./interactions/chat";
+import { restartEncounter, submitPrompt, updateEncounter } from "./interactions/chat";
 import Encounter from "@/encounters/types/Encounter";
 import ContentButton from "@/components/contentButton/ContentButton";
 import EncounterConfigDialog from "./dialogs/EncounterConfigDialog";
@@ -39,6 +39,7 @@ function HomeScreen() {
       </div>
       <div className={styles.encounterActions}>
         <h1>Encounter</h1>
+        <ContentButton onClick={() => restartEncounter(encounter, setLines)} text="Restart"/>
         <ContentButton onClick={() => setModalDialogName(EncounterConfigDialog.name)} text="Edit" />
         <ContentButton onClick={async () => { 
           const nextEncounter = await importEncounterFile();

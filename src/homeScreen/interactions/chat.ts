@@ -133,6 +133,12 @@ export function updateEncounter(encounter:Encounter, setEncounter:Function, setM
   setLines(theChatBuffer.lines);
 }
 
+export function restartEncounter(encounter:Encounter, setLines:Function) {
+  assertNonNullable(theChatBuffer);
+  _initForEncounter(encounter);
+  setLines(theChatBuffer.lines);
+}
+
 export async function submitPrompt(prompt:string, setLines:Function) {
     assertNonNullable(theChatBuffer);
     _addUserLine(prompt);
