@@ -13,6 +13,10 @@ export type ExpressionToken = {
   operationNo: number|null;
 };
 
+export function duplicateExpressionToken(from:ExpressionToken):ExpressionToken {
+  return { tokenType: from.tokenType, value: from.value, depth: from.depth, operationNo: from.operationNo };
+}
+
 /* What the types mean for leftToken and rightToken:
     * null means no operand
     * number refers to an earlier operation result that will be used as the operand.
@@ -24,6 +28,12 @@ export type OperationBinding = {
   evaluationFunction:EvaluationFunction;
 }
 
+export function duplicateOperationBinding(from:OperationBinding):OperationBinding {
+  const leftToken = from.leftToken === null || typeof from.leftToken === 'number' ? from.leftToken : duplicateExpressionToken(from.leftToken);
+  const rightToken = from.rightToken === null || typeof from.rightToken === 'number' ? from.rightToken : duplicateExpressionToken(from.rightToken);
+  return { leftToken, rightToken, evaluationFunction: from.evaluationFunction };
+}
+
 class Expression {
   private readonly _operationBindings: OperationBinding[];
   
@@ -31,8 +41,8 @@ class Expression {
     this._operationBindings = operationBindings;
   }
   
-  // Returns a copy of the bindings suitable for use in evaluation. Remember that the token instances in each binding should be treated as immutable.
-  getOperationBindings():OperationBinding[] { return [...this._operationBindings]; } 
+  // Returns a copy of the bindings suitable for use in evaluation.
+  duplicateOperationBindings():OperationBinding[] { return this._operationBindings.map(duplicateOperationBinding); }
 }
 
 export default Expression;

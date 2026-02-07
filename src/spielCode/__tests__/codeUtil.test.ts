@@ -264,6 +264,17 @@ describe('codeUtil', () => {
       variables.set('b', 3);
       expect(_runCode('result=a+b', variables)).toEqual(5);
     });
+
+    it('uses updated variable values in a second call to the same code', () => {
+      const variables = new VariableManager();
+      variables.set('x', 0);
+      expect(variables.get('x')).toEqual(0);
+      const code = textToCode('x = x + 1');
+      executeCode(code, variables);
+      expect(variables.get('x')).toEqual(1);
+      executeCode(code, variables);
+      expect(variables.get('x')).toEqual(2);
+    });
   });
 
   describe('single operations', () => {

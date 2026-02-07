@@ -243,7 +243,7 @@ function _findDepthFromBinding(operationBinding:OperationBinding):number {
 }
 
 export function expressionToValue(expression:Expression, variableManager:VariableManager):any {
-  const operationBindings = expression.getOperationBindings();
+  const operationBindings = expression.duplicateOperationBindings();
   
   replaceVariableTokensWithLiterals(operationBindings, variableManager);
   
