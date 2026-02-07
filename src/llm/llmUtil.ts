@@ -17,6 +17,7 @@ import LLMConnectionType from "./types/LLMConnectionType";
 import LLMMessages from "./types/LLMMessages";
 import StatusUpdateCallback from "./types/StatusUpdateCallback";
 import { webLlmConnect, webLlmGenerate } from "./webLlmUtil";
+import { addAssistantMessageToChatHistory, addUserMessageToChatHistory } from "./messageUtil";
 
 const UNSPECIFIED_MODEL_ID = 'UNSPECIFIED';
 
@@ -28,7 +29,7 @@ let theConnection:LLMConnection = {
   connectionType: LLMConnectionType.NONE
 }
 
-let messages:LLMMessages = {
+let theMessages:LLMMessages = {
   chatHistory: [],
   maxChatHistorySize: 100,
   systemMessage: null
@@ -46,8 +47,8 @@ function _clearConnectionAndThrow(message:string) {
 
 function _inputCharCount(prompt:string):number {
   return prompt.length + 
-    (messages.systemMessage ? messages.systemMessage.length : 0) + 
-    messages.chatHistory.reduce((acc, curr) => acc + curr.content.length, 0);
+    (theMessages.systemMessage ? theMessages.systemMessage.length : 0) + 
+    theMessages.chatHistory.reduce((acc, curr) => acc + curr.content.length, 0);
 }
 
 /*
@@ -78,24 +79,32 @@ export async function connect(modelId:string, onStatusUpdate:StatusUpdateCallbac
 }
 
 export function setSystemMessage(message:string|null) {
-  messages.systemMessage = message;
+  theMessages.systemMessage = message;
 }
 
 export function setChatHistorySize(size:number) {
-  messages.maxChatHistorySize = size;
+  theMessages.maxChatHistorySize = size;
 }
 
 export function saveChatConfiguration() {
-  savedMessages = {...messages};
+  savedMessages = {...theMessages};
 }
 
 export function restoreChatConfiguration() {
   if (!savedMessages) throw Error('No saved configuration.');
-  messages = {...savedMessages};
+  theMessages = {...savedMessages};
 }
 
 export function clearChatHistory() {
-  messages.chatHistory = [];
+  theMessages.chatHistory = [];
+}
+
+export function addAssistantMessage(message:string) {
+  addAssistantMessageToChatHistory(theMessages, message);
+}
+
+export function addUserMessage(message:string) {
+  addUserMessageToChatHistory(theMessages, message);
 }
 
 export async function generate(prompt:string, onStatusUpdate:StatusUpdateCallback):Promise<string> {
@@ -111,7 +120,7 @@ export async function generate(prompt:string, onStatusUpdate:StatusUpdateCallbac
   let message = '';
   let requestTime = Date.now();
   switch(theConnection.connectionType) {
-    case LLMConnectionType.WEBLLM: message = await webLlmGenerate(theConnection, messages, prompt, _captureFirstResponse); break;
+    case LLMConnectionType.WEBLLM: message = await webLlmGenerate(theConnection, theMessages, prompt, _captureFirstResponse); break;
     default: throw Error('Unexpected');
   }
   updateModelDevicePerformanceHistory(theConnection.modelId, requestTime, firstResponseTime, Date.now(), _inputCharCount(prompt), message.length);

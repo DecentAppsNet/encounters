@@ -103,24 +103,6 @@ describe('markdownUtil', () => {
       });
     });
 
-    it('omits lines of text that doo not have section content formatting', () => {
-      const text = '# Section One\n' +
-        'This line should be ignored.\n' +
-        '* This is some content.\n' +
-        'Another line that should be ignored.\n' +
-        '* More content here.\n' +
-        '# Section Two\n' +
-        'Ignored line again.\n' +
-        '> A different kind of content.\n' +
-        'Yet another ignored line.\n' +
-        '> With multiple lines.';
-      const sections = parseSections(text);
-      expect(sections).toEqual({
-        'Section One': '* This is some content.\n* More content here.',
-        'Section Two': '> A different kind of content.\n> With multiple lines.'
-      });
-    });
-
     it('parses sections with camelCase names', () => {
       const text = '# Section One\n' +
         '* This is some content.\n* More content here.\n' +

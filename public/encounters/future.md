@@ -19,6 +19,15 @@ There are some additional message types used less frequently:
 >>text that will be included in chat history as a user message but not displayed. (useful for n-shot)
 >>_text that will be included in chat history as a user message and also be displayed._ (useful for story events that require the user to say something specific)
 
+
+*Instruction message* - hidden instructions for the encounter. (LLM grounding, no chat window)
+
+_Narration message_ - message that explains the encounter but is not spoken by any character. (chat window, but not history)
+> Character message - message that character says in the context of the story. (chat window and history)
+>> Player message - message that player's character says. (chat window and history)
+
+
+
 A boolean expression can be evaluated at the start of a message. If the value is falsy, the message will be omitted.
 
 **`wishes === 0`You are willing to grant the user three more wishes.`**

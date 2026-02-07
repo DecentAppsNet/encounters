@@ -3,8 +3,8 @@ import TextConsole from "../textConsole/TextConsole";
 import { TextConsoleLine } from "../textConsole/TextConsoleBuffer";
 import WaitingEllipsis from "../waitingEllipsis/WaitingEllipsis";
 
-export const USER_PREFIX = 'USER:';
-export const NARRATIVE_PREFIX = 'NARRATIVE:';
+export const PLAYER_PREFIX = 'PLAYER:';
+export const NARRATION_PREFIX = 'NARRATION:';
 
 type Props = {
   lines:TextConsoleLine[]
@@ -14,11 +14,11 @@ function _onRenderLine(key:number, text:string) {
   let className = '';
   if (text === '...') {
     return <WaitingEllipsis />
-  } else if (text.startsWith(USER_PREFIX)) {
-    text = text.substring(USER_PREFIX.length);
+  } else if (text.startsWith(PLAYER_PREFIX)) {
+    text = text.substring(PLAYER_PREFIX.length);
     className = styles.playerLine;
-  } else if (text.startsWith(NARRATIVE_PREFIX)) {
-    text = text.substring(NARRATIVE_PREFIX.length);
+  } else if (text.startsWith(NARRATION_PREFIX)) {
+    text = text.substring(NARRATION_PREFIX.length);
     className = styles.narrativeLine;
   } else {
     className = styles.characterLine;

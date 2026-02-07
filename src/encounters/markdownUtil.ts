@@ -1,5 +1,3 @@
-import { assert } from "decent-portal";
-
 // Type for associative array
 type Sections = { [sectionName:string]:string };
 type NameValues = { [name:string]:string };
@@ -11,13 +9,6 @@ export function textToCamelCase(text:string):string {
     .filter(word => word.trim() !== '')
     .map((word, i) => (i === 0 ? word[0].toLowerCase() : word[0].toUpperCase()) + word.slice(1))
     .join('');
-}
-
-function _isSectionContentLine(line:string):boolean {
-  const trimmedLine = line.trim();
-  assert(trimmedLine.length !== 0); // Calling code should already have filtered out empty lines.
-  const firstChar = trimmedLine[0];
-  return firstChar === '*' || firstChar === '>' || firstChar === '#' || firstChar === '_' || firstChar === '`'; // TODO - do I want this filtering here? It seems coupled to the format too much.
 }
 
 // Parse the heading sections of a markdown text. The header of each section is the section name, and the content of each section is the value for the section.
@@ -41,7 +32,7 @@ function _parseSectionArrays(markdownText:string, indentLevel:number = 1, useCam
       if (useCamelCase) sectionName = textToCamelCase(sectionName);
       sectionContent = '';
     } else {
-      if (_isSectionContentLine(line)) sectionContent += line + '\n';
+      sectionContent += line + '\n';
     }
   }
   if (sectionName) _addSection(sectionName, sectionContent); // Store the last section.

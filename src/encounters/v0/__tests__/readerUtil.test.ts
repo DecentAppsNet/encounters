@@ -29,7 +29,7 @@ describe('readerUtil', () => {
     expect(encounter.model).toBe('Llama-3.1-8B-Instruct-q4f16_1-MLC-1k');
     expect(encounter.startActions.length).toBe(1);
     let a = encounter.startActions[0];
-    expect(a.actionType).toBe(ActionType.DISPLAY_MESSAGE);
+    expect(a.actionType).toBe(ActionType.NARRATION_MESSAGE);
     expect((a as DisplayMessageAction).message).toBe('As you attempt to cross a bridge, a troll emerges from beneath it, blocking your path. The troll seems disinclined to let you past.');
     expect(encounter.instructionActions.length).toBe(2);
     a = encounter.instructionActions[0];
@@ -40,7 +40,7 @@ describe('readerUtil', () => {
     expect(c.criteria).toBe("user describes something you've never heard of before");
     expect(c.actions.length).toBe(1);
     a = c.actions[0];
-    expect(a.actionType).toBe(ActionType.DISPLAY_MESSAGE);
+    expect(a.actionType).toBe(ActionType.NARRATION_MESSAGE);
     expect((a as DisplayMessageAction).message).toBe('The troll reluctantly allows you to pass. Victory!');
   });
 });

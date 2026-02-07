@@ -39,7 +39,9 @@ function _parseCodeAction(line:string):CodeAction {
 
 function _lineToAction(line:string):Action|null {
   if (line.startsWith('**')) return _parseMessageAction(line, '**', ActionType.INSTRUCTION_MESSAGE);
-  if (line.startsWith('_')) return _parseMessageAction(line, '_', ActionType.DISPLAY_MESSAGE);
+  if (line.startsWith('_')) return _parseMessageAction(line, '_', ActionType.NARRATION_MESSAGE);
+  if (line.startsWith('>>')) return _parseMessageAction(line, '>>', ActionType.PLAYER_MESSAGE);
+  if (line.startsWith('>')) return _parseMessageAction(line, '>', ActionType.CHARACTER_MESSAGE);
   if (line.startsWith('`')) return _parseCodeAction(line);
   return null;
 }

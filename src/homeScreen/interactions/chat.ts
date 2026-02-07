@@ -1,11 +1,11 @@
-import { NARRATIVE_PREFIX, USER_PREFIX } from "@/components/chat/ChatHistory";
+import { NARRATION_PREFIX, PLAYER_PREFIX } from "@/components/chat/ChatHistory";
 import TextConsoleBuffer from "@/components/textConsole/TextConsoleBuffer";
 import { isServingLocally } from "@/developer/devEnvUtil";
 import { findCharacterTriggerInText, stripTriggerCodes } from "@/encounters/encounterUtil";
 import Encounter from "@/encounters/types/Encounter";
 import Action, { MessageAction } from "@/encounters/v0/types/Action";
 import ActionType from "@/encounters/v0/types/ActionType";
-import { clearChatHistory, generate, isLlmConnected, setSystemMessage } from "@/llm/llmUtil";
+import { addAssistantMessage, addUserMessage, clearChatHistory, generate, isLlmConnected, setSystemMessage } from "@/llm/llmUtil";
 import { executeCode } from "@/spielCode/codeUtil";
 import VariableManager from "@/spielCode/VariableManager";
 import { assertNonNullable } from "decent-portal";
@@ -33,9 +33,19 @@ function _addChatBufferLine(line:string) {
   }
 }
 
-function _addUserLine(line:string) {
+function _addPlayerLine(line:string) {
   assertNonNullable(theChatBuffer);
-  _addChatBufferLine(`${USER_PREFIX}${line}`);
+  _addChatBufferLine(`${PLAYER_PREFIX}${line}`);
+}
+
+function _addCharacterLine(line:string) {
+  assertNonNullable(theChatBuffer);
+  _addChatBufferLine(line);
+}
+
+function _addNarrationLine(line:string) {
+  assertNonNullable(theChatBuffer);
+  _addChatBufferLine(`${NARRATION_PREFIX}${line}`);
 }
 
 function _addGeneratingLine() {
@@ -63,8 +73,20 @@ function _handleActions(actions:Action[]):string {
   for(let i = 0; i < actions.length; ++i) {
     const action = actions[i];
     switch(action.actionType) {
-      case ActionType.DISPLAY_MESSAGE:
-        if (_actionCriteriaMet(action)) _addChatBufferLine(`${NARRATIVE_PREFIX}${action.message}`);
+      case ActionType.NARRATION_MESSAGE:
+        if (_actionCriteriaMet(action)) _addNarrationLine(action.message);
+      break;
+
+      case ActionType.CHARACTER_MESSAGE:
+        if (!_actionCriteriaMet(action)) break; 
+        _addCharacterLine(action.message);
+        addAssistantMessage(action.message);
+      break;
+
+      case ActionType.PLAYER_MESSAGE:
+        if (!_actionCriteriaMet(action)) break; 
+        _addPlayerLine(action.message);
+        addUserMessage(action.message);
       break;
       
       case ActionType.INSTRUCTION_MESSAGE:
@@ -94,7 +116,7 @@ function _finalizeResponse(responseText:string) {
     _handleActions(characterTrigger.actions);
   } else {
     const displayText = stripTriggerCodes(responseText);
-    _addChatBufferLine(displayText);
+    _addCharacterLine(displayText);
   }
 }
 
@@ -112,7 +134,6 @@ function _initForEncounter(encounter:Encounter) {
   theChatBuffer.clear();
   theEncounter = encounter;
   theSessionVariables = new VariableManager();
-  theSessionVariables.set('encounterTitle', encounter.title); // TODO - delete this later. Just getting past a compile error.
   const systemMessage = _encounterToSystemMessage(encounter);
   setSystemMessage(systemMessage);
   clearChatHistory();
@@ -141,7 +162,7 @@ export function restartEncounter(encounter:Encounter, setLines:Function) {
 
 export async function submitPrompt(prompt:string, setLines:Function) {
     assertNonNullable(theChatBuffer);
-    _addUserLine(prompt);
+    _addPlayerLine(prompt);
     _addGeneratingLine();
     setLines(theChatBuffer.lines);
     try {
