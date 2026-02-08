@@ -9,7 +9,7 @@ import Action, { MessageAction } from "@/encounters/v0/types/Action";
 import ActionType from "@/encounters/v0/types/ActionType";
 import { addAssistantMessage, addUserMessage, clearChatHistory, generate, isLlmConnected, setSystemMessage } from "@/llm/llmUtil";
 import { executeCode } from "@/spielCode/codeUtil";
-import VariableManager from "@/spielCode/VariableManager";
+import VariableManager, { VariableCollection } from "@/spielCode/VariableManager";
 
 // TODO - at some point, refactor the encounter-specific logic into encounterUtil or a different module that is uncoupled to input, display, and LLM.
 
@@ -67,7 +67,7 @@ function _actionCriteriaMet(action:MessageAction):boolean {
   if (!action.criteria) return true;
   assertNonNullable(theSessionVariables); 
   executeCode(action.criteria, theSessionVariables);
-  return theSessionVariables.get('result') === true;
+  return theSessionVariables.get('__result') === true;
 }
 
 function _handleActions(actions:Action[]):string { // TODO factor out of this module. See comments at top.
@@ -134,7 +134,6 @@ function _encounterToSystemMessage(encounter:Encounter):string { // TODO factor 
     if (!isEnabled) continue;
     systemMessage += `\nIf ${criteria} then output @${triggerCode} and nothing else.`;
   }
-  console.log('System message:', systemMessage);
   return systemMessage;
 }
 
@@ -149,10 +148,21 @@ function _initForEncounter(encounter:Encounter) {
   _handleActions(encounter.startActions);
 }
 
+function _updateSystemMessageForEncounter() {
+  assertNonNullable(theEncounter);
+  assertNonNullable(theSessionVariables);
+  const systemMessage = _encounterToSystemMessage(theEncounter);
+  setSystemMessage(systemMessage);
+}
+
 export function initChat(encounter:Encounter, setLines:Function) {
   theChatBuffer = new TextConsoleBuffer(MAX_LINE_COUNT);
   _initForEncounter(encounter);
   setLines(theChatBuffer.lines);
+}
+
+export function getVariables():VariableCollection {
+  return !theSessionVariables ? {} : theSessionVariables.toCollection();
 }
 
 export function updateEncounter(encounter:Encounter, setEncounter:Function, setModalDialogName:Function, setLines:Function) {
@@ -174,6 +184,7 @@ export async function submitPrompt(prompt:string, setLines:Function) { // TODO f
     _addPlayerLine(prompt);
     _addGeneratingLine();
     setLines(theChatBuffer.lines);
+    _updateSystemMessageForEncounter();
     try {
       if (!isLlmConnected()) { 
         const message = isServingLocally() 

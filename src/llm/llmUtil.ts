@@ -82,6 +82,10 @@ export function setSystemMessage(message:string|null) {
   theMessages.systemMessage = message;
 }
 
+export function getSystemMessage():string|null {
+  return theMessages.systemMessage;
+}
+
 export function setChatHistorySize(size:number) {
   theMessages.maxChatHistorySize = size;
 }

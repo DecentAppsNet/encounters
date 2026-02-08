@@ -10,6 +10,7 @@ import { restartEncounter, submitPrompt, updateEncounter } from "./interactions/
 import Encounter from "@/encounters/types/Encounter";
 import ContentButton from "@/components/contentButton/ContentButton";
 import EncounterConfigDialog from "./dialogs/EncounterConfigDialog";
+import DiagnosticDialog from "./dialogs/DiagnosticDialog";
 import { importEncounterFile } from "./interactions/import";
 import { downloadEncounter } from "./interactions/export";
 
@@ -46,12 +47,17 @@ function HomeScreen() {
           if (nextEncounter) updateEncounter(nextEncounter, setEncounter, setModalDialogName, setLines);
         }} text="Import" />
         <ContentButton onClick={() => downloadEncounter(encounter)} text="Download" />
+        <ContentButton onClick={() => setModalDialogName(DiagnosticDialog.name)} text="Diagnostics" />
       </div>
       <EncounterConfigDialog
         isOpen={modalDialogName === EncounterConfigDialog.name}
         encounter={encounter}
         onCancel={() => setModalDialogName(null)}
         onSave={(nextEncounter:Encounter) => { updateEncounter(nextEncounter, setEncounter, setModalDialogName, setLines); }}
+      />
+      <DiagnosticDialog
+        isOpen={modalDialogName === DiagnosticDialog.name}
+        onClose={() => setModalDialogName(null)}
       />
     </div>
   );

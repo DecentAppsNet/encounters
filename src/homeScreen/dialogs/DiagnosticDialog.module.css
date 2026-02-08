@@ -1,0 +1,25 @@
+.systemMessage {
+  width: 80%;
+}
+
+.systemMessage > h1 {
+  font-size: 1.2rem;
+}
+
+.systemMessage > p {
+  margin-left: 2vh;
+  font-size: 1rem;
+}
+
+.variableList {
+  width: 80%;
+}
+
+.variableList > h1 {
+  font-size: 1.2rem;
+}
+
+.variableList > li,p {
+  margin-left: 2vh;
+  font-size: 1rem;
+}

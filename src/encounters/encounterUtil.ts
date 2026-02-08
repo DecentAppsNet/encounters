@@ -58,6 +58,6 @@ export async function enableConditionalCharacterTriggers(characterTriggers:Chara
     const trigger = characterTriggers[i];
     if (trigger.enabledCriteria === null) continue;
     executeCode(trigger.enabledCriteria, sessionVariables);
-    trigger.isEnabled = sessionVariables.get('result');
+    trigger.isEnabled = sessionVariables.get('__result');
   }
 }

@@ -23,7 +23,7 @@ function _parseConditionalCodeBlock(line:string):{message:string, criteria:Code|
   const endPos = line.indexOf('`', startPos+1);
   if (endPos === -1) return {message:line, criteria:null};
   if (line.indexOf('`', endPos+1) !== -1) throw Error('Multiple code blocks found in message line - only one allowed.');
-  const codeText = `result=${line.substring(startPos+1, endPos)}`; // "result=" - converts the concise expression format to a statement.
+  const codeText = `__result=${line.substring(startPos+1, endPos)}`; // "__result=" - converts the concise expression format to a statement.
   const message = `${line.substring(0, startPos - 1)}${line.substring(endPos+1)}`.trim();
   const criteria = textToCode(codeText);
   return {message, criteria};

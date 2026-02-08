@@ -1,4 +1,4 @@
-type VariableCollection = {
+export type VariableCollection = {
   [key:string]: any;
 };
 
@@ -15,6 +15,10 @@ class VariableManager {
   
   set(key:string, value:any):void {
     this._localVariables[key] = value;
+  }
+
+  toCollection():VariableCollection {
+    return {...this._localVariables};
   }
 }
 
