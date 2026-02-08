@@ -1,4 +1,7 @@
 Encounter v1.0
+
+Not all of this is true. Thinking ahead a bit.
+
 # Syntax Guide
 
 All statements in the "Syntax Guide" section will not affect the encounter. It is here for reference. Feel free to delete.
