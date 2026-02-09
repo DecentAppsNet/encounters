@@ -6,6 +6,7 @@ import { init, startLoadingModel } from "./interactions/initialization";
 import ProgressBar from '@/components/progressBar/ProgressBar';
 import TopBar from '@/components/topBar/TopBar';
 import ContentButton from "@/components/contentButton/ContentButton";
+import AboutDialog from "@/homeScreen/dialogs/AboutDialog";
 
 type Props = {
   onComplete: () => void;
@@ -44,7 +45,7 @@ function LoadScreen(props:Props) {
   
   return (
     <div className={styles.container}>
-      <TopBar />
+      <TopBar onAboutClick={() => setModalDialogName(AboutDialog.name)}/>
       <div className={styles.content}>
         {statusContent}
       </div>
@@ -55,6 +56,10 @@ function LoadScreen(props:Props) {
         problems={problems} 
         onConfirm={() => {setModalDialogName(null); setIsReadyToLoad(true); }} 
         onCancel={() => {setModalDialogName(null); setWasLoadCancelled(true); }}
+      />
+      <AboutDialog
+        isOpen={modalDialogName === AboutDialog.name}
+        onClose={() => setModalDialogName(null)}
       />
     </div>
   );

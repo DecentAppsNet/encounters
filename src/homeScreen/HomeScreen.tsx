@@ -13,6 +13,7 @@ import EncounterConfigDialog from "./dialogs/EncounterConfigDialog";
 import DiagnosticDialog from "./dialogs/DiagnosticDialog";
 import { importEncounterFile } from "./interactions/import";
 import { downloadEncounter } from "./interactions/export";
+import AboutDialog from "./dialogs/AboutDialog";
 
 function HomeScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -33,7 +34,7 @@ function HomeScreen() {
   
   return (
     <div className={styles.container}>
-      <TopBar />
+      <TopBar onAboutClick={() => setModalDialogName(AboutDialog.name)}/>
       <div className={styles.content}>
         <h1>{encounter.title}</h1>
         <Chat className={styles.chat} lines={lines} onChatInput={(prompt) => submitPrompt(prompt, setLines)} />
@@ -57,6 +58,10 @@ function HomeScreen() {
       />
       <DiagnosticDialog
         isOpen={modalDialogName === DiagnosticDialog.name}
+        onClose={() => setModalDialogName(null)}
+      />
+      <AboutDialog
+        isOpen={modalDialogName === AboutDialog.name}
         onClose={() => setModalDialogName(null)}
       />
     </div>
