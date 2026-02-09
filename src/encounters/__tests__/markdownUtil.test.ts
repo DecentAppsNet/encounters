@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { textToCamelCase, parseSections, parseNameValueLines } from "../markdownUtil";
 
 describe('markdownUtil', () => {

@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { findStatementType } from "../statementUtil";
 import StatementType from "../types/StatementType";
 

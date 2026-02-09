@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import VariableManager from "../VariableManager";
 
 describe('VariableManager', () => {

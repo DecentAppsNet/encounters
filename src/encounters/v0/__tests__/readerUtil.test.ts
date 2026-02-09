@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import  exampleText from './encounterExample';
 import { textToEncounter } from '../readerUtil';
 import ActionType from '../types/ActionType';

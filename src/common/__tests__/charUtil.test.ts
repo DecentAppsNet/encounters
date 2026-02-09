@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { isAlphaNumeric, isNumeric } from "../charUtil";
 
 describe('charUtil', () => {

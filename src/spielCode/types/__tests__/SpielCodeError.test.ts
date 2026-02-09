@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import SpielCodeError from "../SpielCodeError";
 import {UNKNOWN_POSITION} from "../CodePosition";
 

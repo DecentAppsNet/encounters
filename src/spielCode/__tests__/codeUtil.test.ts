@@ -1,3 +1,5 @@
+import { describe, expect, it } from 'vitest';
+
 import { textToCode, executeCode } from "../codeUtil";
 import VariableManager from "../VariableManager";
 import CodePosition, {UNKNOWN_POSITION} from "../types/CodePosition";

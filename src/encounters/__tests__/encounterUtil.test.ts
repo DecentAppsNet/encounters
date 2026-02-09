@@ -1,3 +1,4 @@
+import { describe, expect, it } from 'vitest';
 import { stripTriggerCodes, findCharacterTriggerInText } from '../encounterUtil';
 import CharacterTrigger from '../v0/types/CharacterTrigger';
 
