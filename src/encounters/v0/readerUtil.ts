@@ -2,7 +2,7 @@ import { assert } from "decent-portal";
 
 import { parseNameValueLines, parseSections } from "../markdownUtil";
 import Encounter from "./types/Encounter";
-import Action, { CodeAction, MessageAction } from "./types/Action";
+import Action, { CodeAction } from "./types/Action";
 import ActionType from "./types/ActionType";
 import CharacterTrigger from "./types/CharacterTrigger";
 import { parseVersion } from "../versionUtil";
