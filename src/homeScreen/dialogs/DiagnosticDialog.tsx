@@ -1,8 +1,7 @@
 import ModalDialog from "@/components/modalDialogs/ModalDialog";
 import DialogButton from "@/components/modalDialogs/DialogButton";
 import DialogFooter from "@/components/modalDialogs/DialogFooter";
-import { getSystemMessage } from "@/llm/llmUtil";
-import { getVariables } from "../interactions/chat";
+import { getSystemMessage, getVariables } from "../interactions/chat";
 import styles from './DiagnosticDialog.module.css';
 
 type Props = { 

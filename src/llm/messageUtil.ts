@@ -18,10 +18,10 @@ export function addToolMessageToChatHistory(messages:LLMMessages, message:string
   if (messages.chatHistory.length > messages.maxChatHistorySize) messages.chatHistory.shift();
 }
 
-export function createChatHistory(messages:LLMMessages, prompt:string) {
+export function createChatHistory(messages:LLMMessages, prompt?:string) {
   const chatHistory:LLMMessage[] = [];
   if (messages.systemMessage) chatHistory.push({role:'system', content:messages.systemMessage});
   for (const chatMessage of messages.chatHistory) { chatHistory.push(chatMessage); }
-  chatHistory.push({role:'user', content:prompt});
+  if (prompt) chatHistory.push({role:'user', content:prompt});
   return chatHistory;
 }

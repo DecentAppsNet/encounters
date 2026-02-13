@@ -1,0 +1,209 @@
+import LLMMessages from "@/llm/types/LLMMessages";
+import Encounter, { LATEST_MAJOR_VERSION } from "./types/Encounter";
+import VariableManager, { VariableCollection } from "@/spielCode/VariableManager";
+import { majorVersion, parseVersion } from "./versionUtil";
+import { textToEncounter } from "./v0/readerUtil";
+import Action from "./v0/types/Action";
+import { assertNonNullable } from "decent-portal";
+import ActionType from "./v0/types/ActionType";
+import Code from "@/spielCode/types/Code";
+import { executeCode } from "@/spielCode/codeUtil";
+import { addAssistantMessageToChatHistory, addUserMessageToChatHistory } from "@/llm/messageUtil";
+import CharacterTrigger from "./v0/types/CharacterTrigger";
+import { stripTriggerCodes } from "./encounterUtil";
+import { baseUrl } from "@/common/urlUtil";
+
+type GenerateCallback = (messages:LLMMessages) => Promise<string>;
+type MessageCallback = (text:string) => void;
+
+function _textToEncounter(text:string):Encounter {
+  const version = parseVersion(text);
+  const majorVersionNo = majorVersion(version); // For now, only v0 is supported.
+  if (majorVersionNo !== LATEST_MAJOR_VERSION) throw Error(`Unsupported encounter version: ${version}`);
+  return textToEncounter(text);
+}
+
+function _criteriaMet(criteria:Code|null, variables:VariableManager):boolean {
+  if (!criteria) return true;
+  const prevResult = variables.get('__result');
+  assertNonNullable(variables); 
+  executeCode(criteria, variables);
+  const result = variables.get('__result') === true;
+  variables.set('__result', prevResult); // Restoring the value avoids any variable name collisions.
+  return result;
+}
+
+function _enableConditionalCharacterTriggers(characterTriggers:CharacterTrigger[], variables:VariableManager) {
+  for(let i = 0; i < characterTriggers.length; ++i) {
+    const trigger = characterTriggers[i];
+    if (trigger.enabledCriteria === null) continue;
+    trigger.isEnabled = _criteriaMet(trigger.enabledCriteria, variables);
+  }
+}
+
+function _findCharacterTriggerInText(responseText:string, characterTriggers:CharacterTrigger[]):CharacterTrigger|null {
+  if (!characterTriggers.length) return null;
+  let pos = 0;
+  while(pos < responseText.length) {
+    pos = responseText.indexOf('@', pos);  
+    if (pos === -1) return null;
+    const triggerCode = responseText[pos+1]; // TODO - support for more than 10 codes. Probably use a-zA-Z0-9 from a lookup array. It is more performant to use less chars.
+    for(let triggerI = 0; triggerI < characterTriggers.length; ++triggerI) {
+      const trigger = characterTriggers[triggerI];
+      if (!trigger.isEnabled) continue;
+      if (triggerCode === trigger.triggerCode) return trigger;
+    }
+    ++pos;
+  }
+  return null;
+}
+
+class EncounterSession {
+  private _encounter:Encounter|null;
+  private _variables:VariableManager;
+  private _onGenerate:GenerateCallback;
+  private _onCharacterMessage:MessageCallback;
+  private _onNarrationMessage:MessageCallback;
+  private _onPlayerMessage:MessageCallback;
+  private _llmMessages:LLMMessages;
+
+  constructor(maxChatHistorySize:number = 100, onGenerate:GenerateCallback, onCharacterMessage:MessageCallback, 
+      onNarrationMessage:MessageCallback, onPlayerMessage:MessageCallback) {
+    this._onGenerate = onGenerate;
+    this._onCharacterMessage = onCharacterMessage;
+    this._onNarrationMessage = onNarrationMessage;
+    this._onPlayerMessage = onPlayerMessage;
+    this._encounter = null;
+    this._variables = new VariableManager();
+    this._llmMessages = {
+      chatHistory:[],
+      maxChatHistorySize,
+      systemMessage: null
+    };
+  }
+
+  private _handleActions(actions:Action[]):
+      {systemMessage:string, reprocess:boolean} {
+    let reprocess = false;
+    let systemMessage = '';
+    for(let i = 0; i < actions.length; ++i) {
+      const action = actions[i];
+      switch(action.actionType) {
+        case ActionType.NARRATION_MESSAGE:
+          if (_criteriaMet(action.criteria, this._variables)) this._onNarrationMessage(action.messages.nextMessage());
+        break;
+
+        case ActionType.CHARACTER_MESSAGE:
+          if (_criteriaMet(action.criteria, this._variables)) {
+            const message = action.messages.nextMessage();
+            this._onCharacterMessage(message);
+            addAssistantMessageToChatHistory(this._llmMessages, message);
+          }
+        break;
+
+        case ActionType.PLAYER_MESSAGE:
+          if (_criteriaMet(action.criteria, this._variables)) {
+            const message = action.messages.nextMessage();
+            this._onPlayerMessage(message);
+            addUserMessageToChatHistory(this._llmMessages, message);
+          }
+        break;
+        
+        case ActionType.INSTRUCTION_MESSAGE:
+          if (_criteriaMet(action.criteria, this._variables)) {
+            if (systemMessage.length) systemMessage += '\n';
+            systemMessage += action.messages.nextMessage();
+          }
+        break;
+
+        case ActionType.CODE:
+          executeCode(action.code, this._variables);
+        break;
+
+        case ActionType.REPROCESS:
+          if (_criteriaMet(action.criteria, this._variables)) reprocess = true;
+        break;
+
+        default:
+          throw Error('Unexpected');
+      }
+    }
+    return { systemMessage, reprocess };
+  }
+
+
+  private _updateSystemMessage() { // Important: not idempotent. Variable state can change in _handleActions().
+    assertNonNullable(this._encounter);
+    _enableConditionalCharacterTriggers(this._encounter.characterTriggers, this._variables);
+    let {systemMessage} = this._handleActions(this._encounter.instructionActions); 
+    for(let i = 0; i < this._encounter.characterTriggers.length; ++i) {
+      const { criteria, triggerCode, isEnabled } = this._encounter.characterTriggers[i];
+      if (!isEnabled) continue;
+      systemMessage += `\nIf ${criteria} then output @${triggerCode} and nothing else.`;
+    }
+    this._llmMessages.systemMessage = systemMessage;
+  }
+
+  private async _generateWithResponseHandling() {
+    assertNonNullable(this._encounter);
+    let reprocessCount = 0;
+    const MAX_REPROCESS_COUNT = 3;
+    while(++reprocessCount <= MAX_REPROCESS_COUNT) {
+      this._updateSystemMessage();
+      const responseText = await this._onGenerate(this._llmMessages);
+      const characterTrigger = _findCharacterTriggerInText(responseText, this._encounter.characterTriggers);
+      if (!characterTrigger) {
+        const displayText = stripTriggerCodes(responseText);
+        this._onCharacterMessage(displayText);
+        return;
+      } else {
+        characterTrigger.isEnabled = false; // Prevent the same trigger from firing again in the future, unless it's re-enabled by the encounter's logic.
+        const { reprocess } = this._handleActions(characterTrigger.actions);
+        if (!reprocess) break;
+      }
+    }
+  }
+
+  async start(encounter:Encounter) {
+    this._encounter = encounter;
+    const {reprocess} = this._handleActions(this._encounter.startActions);
+    if (reprocess) await this._generateWithResponseHandling();
+  }
+
+  async startFromUrl(encounterUrl:string) {
+    const url = baseUrl(encounterUrl);
+    const response = await fetch(url);
+    if (!response.ok) throw Error(`Failed to load encounter from URL: ${encounterUrl}`);
+    const text = await response.text();
+    const encounter = _textToEncounter(text);
+    return this.start(encounter);
+  }
+
+  async restart() {
+    if (!this._encounter) throw Error('No encounter loaded');
+    this._variables = new VariableManager();
+    const {reprocess, systemMessage} = this._handleActions(this._encounter.startActions);
+    this._llmMessages.chatHistory = [];
+    this._llmMessages.systemMessage = systemMessage;
+    if (reprocess) await this._generateWithResponseHandling();
+  }
+
+  async prompt(playerText:string) {
+    if (!this._encounter) throw Error('No encounter loaded');
+    addUserMessageToChatHistory(this._llmMessages, playerText);
+    this._onPlayerMessage(playerText);
+    await this._generateWithResponseHandling();
+  }
+
+  getVariables():VariableCollection {
+    return this._variables.toCollection();
+  }
+
+  getSystemMessage():string {
+    return this._llmMessages.systemMessage ?? 'undefined';
+  }
+}
+
+// TODO delete unused functions from encounterUtil.ts.
+
+export default EncounterSession;

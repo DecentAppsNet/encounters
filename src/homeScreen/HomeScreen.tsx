@@ -38,15 +38,15 @@ function HomeScreen() {
       <TopBar onAboutClick={() => setModalDialogName(AboutDialog.name)}/>
       <div className={styles.content}>
         <h1>{encounter.title}</h1>
-        <Chat className={styles.chat} lines={lines} onChatInput={(prompt) => submitPrompt(prompt, setLines)} />
+        <Chat className={styles.chat} lines={lines} onChatInput={(prompt) => submitPrompt(prompt)} />
       </div>
       <div className={styles.encounterActions}>
         <h1>Encounter</h1>
-        <ContentButton onClick={() => restartEncounter(encounter, setLines)} text="Restart"/>
+        <ContentButton onClick={() => restartEncounter(encounter)} text="Restart"/>
         <ContentButton onClick={() => setModalDialogName(EncounterConfigDialog.name)} text="Edit" />
         <ContentButton onClick={async () => { 
           const nextEncounter = await importEncounterFile();
-          if (nextEncounter) updateEncounter(nextEncounter, setEncounter, setModalDialogName, setLines);
+          if (nextEncounter) updateEncounter(nextEncounter, setEncounter, setModalDialogName);
         }} text="Import" />
         <ContentButton onClick={() => downloadEncounter(encounter)} text="Download" />
         <ContentButton onClick={() => setModalDialogName(DiagnosticDialog.name)} text="Diagnostics" />
@@ -55,7 +55,7 @@ function HomeScreen() {
         isOpen={modalDialogName === EncounterConfigDialog.name}
         encounter={encounter}
         onCancel={() => setModalDialogName(null)}
-        onSave={(nextEncounter:Encounter) => { updateEncounter(nextEncounter, setEncounter, setModalDialogName, setLines); }}
+        onSave={(nextEncounter:Encounter) => { updateEncounter(nextEncounter, setEncounter, setModalDialogName); }}
       />
       <DiagnosticDialog
         isOpen={modalDialogName === DiagnosticDialog.name}

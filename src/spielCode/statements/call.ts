@@ -7,8 +7,9 @@ import VariableManager from "../VariableManager";
 import RawStatement from "../types/RawStatement";
 import SpielCodeError from "../types/SpielCodeError";
 import {createStatementCodePosition} from "../codePositionUtil";
+import { assert } from "decent-portal";
 
-function getFunction(functionName:string, functionNameOffset:number):Function {
+function _getFunction(functionName:string, functionNameOffset:number):Function {
   switch(functionName) {
     case 'rand': return (from:number, to:number) => Math.floor(Math.random() * (to - from + 1)) + from;
     case 'restartSpiel': return () => { /* TODO */ };
@@ -16,7 +17,7 @@ function getFunction(functionName:string, functionNameOffset:number):Function {
   }
 }
 
-function parseParams(statementText:string, statementOffset:number):Expression[] {
+function _parseParams(statementText:string, statementOffset:number):Expression[] {
   const leftParenPos = statementText.indexOf('(');
   const rightParenPos = statementText.lastIndexOf(')');
   if (leftParenPos === -1 || rightParenPos === -1) throw new SpielCodeError(`Missing parentheses in function call`, createStatementCodePosition(statementOffset, 0));
@@ -28,8 +29,7 @@ function parseParams(statementText:string, statementOffset:number):Expression[] 
   for(let i = 0; i < params.length; ++i) {
     const param = params[i];
     offset = statementText.indexOf(param, offset);
-    /* v8 ignore next */ // This is a debug error, not a production error.
-    if (offset === -1) throw Error('Unexpected');
+    assert(offset > -1);
     if (param.length === 0) return [];
     paramExpressions.push(textToExpression(param, statementOffset + offset));
     offset += param.length;
@@ -46,8 +46,8 @@ function _parseFunctionName(statementText:string, statementOffset:number):string
 
 export function parseCallStatement(rawStatement:RawStatement):CallStatement {
   const functionName = _parseFunctionName(rawStatement.text, rawStatement.statementOffset);
-  const _function = getFunction(functionName, rawStatement.statementOffset);
-  const parameters = parseParams(rawStatement.text, rawStatement.statementOffset);
+  const _function = _getFunction(functionName, rawStatement.statementOffset);
+  const parameters = _parseParams(rawStatement.text, rawStatement.statementOffset);
   const statementOffset = rawStatement.statementOffset;
   return {statementType:StatementType.CALL, functionName, function:_function, parameters, statementOffset};
 }

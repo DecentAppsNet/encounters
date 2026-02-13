@@ -2,8 +2,7 @@ import LLMConnection from "./types/LLMConnection";
 import LLMConnectionType from "./types/LLMConnectionType";
 import LLMMessages from "./types/LLMMessages";
 import StatusUpdateCallback from "./types/StatusUpdateCallback";
-
-import { addAssistantMessageToChatHistory, addUserMessageToChatHistory, createChatHistory } from "./messageUtil";
+import { createChatHistory } from "./messageUtil";
 
 import {
   CreateMLCEngine,
@@ -48,11 +47,11 @@ export async function webLlmConnect(modelId:string, connection:LLMConnection, on
   }
 }
 
-export async function webLlmGenerate(connection:LLMConnection, llmMessages:LLMMessages, prompt:string, onStatusUpdate:StatusUpdateCallback):Promise<string> {
+export async function webLlmGenerate(connection:LLMConnection, llmMessages:LLMMessages, onStatusUpdate:StatusUpdateCallback):Promise<string> {
   const engine = connection.webLLMEngine;
   if (!engine) throw Error('Unexpected');
 
-  const messages = _toChatCompletionMessages(createChatHistory(llmMessages, prompt));
+  const messages = _toChatCompletionMessages(createChatHistory(llmMessages));
   const request:ChatCompletionRequest = {
     n:1,
     stream: true,
@@ -60,7 +59,6 @@ export async function webLlmGenerate(connection:LLMConnection, llmMessages:LLMMe
     messages,
     temperature: 0.2
   };
-  addUserMessageToChatHistory(llmMessages, prompt);
   
   const asyncChunkGenerator = await engine.chat.completions.create(request);
   let messageText = '';
@@ -73,6 +71,5 @@ export async function webLlmGenerate(connection:LLMConnection, llmMessages:LLMMe
   messageText = await engine.getMessage();
   
   onStatusUpdate(messageText, 1);
-  addAssistantMessageToChatHistory(llmMessages, messageText);
   return messageText;
 }

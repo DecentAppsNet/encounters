@@ -3,23 +3,18 @@ import { assertNonNullable } from "decent-portal";
 import { NARRATION_PREFIX, PLAYER_PREFIX } from "@/components/chat/ChatHistory";
 import TextConsoleBuffer from "@/components/textConsole/TextConsoleBuffer";
 import { isServingLocally } from "@/developer/devEnvUtil";
-import { enableConditionalCharacterTriggers, findCharacterTriggerInText, stripTriggerCodes } from "@/encounters/encounterUtil";
 import Encounter from "@/encounters/types/Encounter";
-import Action from "@/encounters/v0/types/Action";
-import ActionType from "@/encounters/v0/types/ActionType";
-import { addAssistantMessage, addUserMessage, clearChatHistory, generate, isLlmConnected, setSystemMessage } from "@/llm/llmUtil";
-import { executeCode } from "@/spielCode/codeUtil";
-import VariableManager, { VariableCollection } from "@/spielCode/VariableManager";
-import Code from "@/spielCode/types/Code";
-
-// TODO - at some point, refactor the encounter-specific logic into encounterUtil or a different module that is uncoupled to input, display, and LLM.
+import EncounterSession from "@/encounters/EncounterSession";
+import LLMMessages from "@/llm/types/LLMMessages";
+import { stripTriggerCodes } from "@/encounters/encounterUtil";
+import { generate, isLlmConnected } from "@/llm/llmUtil";
+import { VariableCollection } from "@/spielCode/VariableManager";
 
 export const GENERATING = '...';
 const MAX_LINE_COUNT = 100;
 
 let theChatBuffer:TextConsoleBuffer|null = null;
-let theEncounter:Encounter|null = null;
-let theSessionVariables:VariableManager|null = null;
+let theSession:EncounterSession|null = null;
 
 function _isLastLineGenerating():boolean {
   assertNonNullable(theChatBuffer);
@@ -28,170 +23,86 @@ function _isLastLineGenerating():boolean {
   return lastLine.endsWith(GENERATING);
 }
 
-function _addChatBufferLine(line:string) {
+function _addChatBufferLine(line:string, setLines:Function) {
   assertNonNullable(theChatBuffer);
   if (_isLastLineGenerating()){
     theChatBuffer.replaceLastLine(line);
   } else {
     theChatBuffer.addLine(line);
   }
+  setLines(theChatBuffer.lines);
 }
 
-function _addPlayerLine(line:string) {
+function _addPlayerLine(line:string, setLines:Function) {
   assertNonNullable(theChatBuffer);
-  _addChatBufferLine(`${PLAYER_PREFIX}${line}`);
+  _addChatBufferLine(`${PLAYER_PREFIX}${line}`, setLines);
 }
 
-function _addCharacterLine(line:string) {
+function _addCharacterLine(line:string, setLines:Function) {
   assertNonNullable(theChatBuffer);
-  _addChatBufferLine(line);
+  _addChatBufferLine(line, setLines);
 }
 
-function _addNarrationLine(line:string) {
+function _addNarrationLine(line:string, setLines:Function) {
   assertNonNullable(theChatBuffer);
-  _addChatBufferLine(`${NARRATION_PREFIX}${line}`);
+  _addChatBufferLine(`${NARRATION_PREFIX}${line}`, setLines);
 }
 
-function _addGeneratingLine() {
+function _addGeneratingLine(setLines:Function) {
   assertNonNullable(theChatBuffer);
-  _addChatBufferLine(GENERATING);
+  _addChatBufferLine(GENERATING, setLines);
 }
 
 function _onUpdateResponse(responseText:string, setLines:Function) {
   assertNonNullable(theChatBuffer);
   const displayText = stripTriggerCodes(responseText);
-  _addChatBufferLine(`${displayText}${GENERATING}`);
-  setLines(theChatBuffer.lines)
-}
-
-function _actionCriteriaMet(criteria:Code|null):boolean {
-  if (!criteria) return true;
-  assertNonNullable(theSessionVariables); 
-  executeCode(criteria, theSessionVariables);
-  return theSessionVariables.get('__result') === true;
-}
-
-function _handleActions(actions:Action[]):{systemMessage:string, reprocess:boolean} { // TODO factor out of this module. See comments at top.
-  assertNonNullable(theChatBuffer);
-  let reprocess = false;
-  let systemMessage = '';
-  for(let i = 0; i < actions.length; ++i) {
-    const action = actions[i];
-    switch(action.actionType) {
-      case ActionType.NARRATION_MESSAGE:
-        if (_actionCriteriaMet(action.criteria)) _addNarrationLine(action.messages.nextMessage());
-      break;
-
-      case ActionType.CHARACTER_MESSAGE:
-        if (_actionCriteriaMet(action.criteria)) {
-          const message = action.messages.nextMessage();
-          _addCharacterLine(message);
-          addAssistantMessage(message);
-        }
-      break;
-
-      case ActionType.PLAYER_MESSAGE:
-        if (_actionCriteriaMet(action.criteria)) {
-          const message = action.messages.nextMessage();
-          _addPlayerLine(message);
-          addUserMessage(message);
-        }
-      break;
-      
-      case ActionType.INSTRUCTION_MESSAGE:
-        if (_actionCriteriaMet(action.criteria)) {
-          if (systemMessage.length) systemMessage += '\n';
-          systemMessage += action.messages.nextMessage();
-        }
-      break;
-
-      case ActionType.CODE:
-        assertNonNullable(theSessionVariables);
-        executeCode(action.code, theSessionVariables);
-      break;
-
-      case ActionType.REPROCESS:
-        if (_actionCriteriaMet(action.criteria)) reprocess = true;
-      break;
-
-      default:
-        throw Error('Unexpected');
-    }
-  }
-  return { systemMessage, reprocess };
-}
-
-function _finalizeResponse(responseText:string):boolean {
-  assertNonNullable(theChatBuffer);
-  assertNonNullable(theEncounter);
-  const characterTrigger = findCharacterTriggerInText(responseText, theEncounter.characterTriggers);
-  if (characterTrigger) {
-    characterTrigger.isEnabled = false; // Prevent the same trigger from firing again in the future, unless it's re-enabled by the encounter's logic.
-    const { reprocess } = _handleActions(characterTrigger.actions);
-    return reprocess;
-  } else {
-    const displayText = stripTriggerCodes(responseText);
-    _addCharacterLine(displayText);
-    return false;
-  }
-}
-
-function _encounterToSystemMessage(encounter:Encounter):string { // TODO factor out of this module. See comments at top.
-  assertNonNullable(theEncounter);
-  assertNonNullable(theSessionVariables);
-  enableConditionalCharacterTriggers(theEncounter.characterTriggers, theSessionVariables);
-  let { systemMessage } = _handleActions(encounter.instructionActions);
-  for(let i = 0; i < encounter.characterTriggers.length; ++i) {
-    const { criteria, triggerCode, isEnabled } = encounter.characterTriggers[i];
-    if (!isEnabled) continue;
-    systemMessage += `\nIf ${criteria} then output @${triggerCode} and nothing else.`;
-  }
-  return systemMessage;
+  _addChatBufferLine(`${displayText}${GENERATING}`, setLines);
 }
 
 function _initForEncounter(encounter:Encounter) {
   assertNonNullable(theChatBuffer);
+  assertNonNullable(theSession);
   theChatBuffer.clear();
-  theEncounter = encounter;
-  theSessionVariables = new VariableManager();
-  const systemMessage = _encounterToSystemMessage(encounter);
-  setSystemMessage(systemMessage);
-  clearChatHistory();
-  _handleActions(encounter.startActions);
+  theSession.start(encounter);
 }
 
-function _updateSystemMessageForEncounter() {
-  assertNonNullable(theEncounter);
-  assertNonNullable(theSessionVariables);
-  const systemMessage = _encounterToSystemMessage(theEncounter);
-  setSystemMessage(systemMessage);
+async function _onGenerate(messages:LLMMessages, setLines:Function):Promise<string> {
+  _addGeneratingLine(setLines);
+  const response = await generate(messages, partialResponse => _onUpdateResponse(partialResponse, setLines));
+  return response;
 }
 
 export function initChat(encounter:Encounter, setLines:Function) {
   theChatBuffer = new TextConsoleBuffer(MAX_LINE_COUNT);
+  theSession = new EncounterSession(MAX_LINE_COUNT, 
+    (m) => _onGenerate(m, setLines),
+    (m) => _addCharacterLine(m, setLines), 
+    (m) => _addNarrationLine(m, setLines), 
+    (m) => _addPlayerLine(m, setLines));
   _initForEncounter(encounter);
-  setLines(theChatBuffer.lines);
 }
 
 export function getVariables():VariableCollection {
-  return !theSessionVariables ? {} : theSessionVariables.toCollection();
+  return theSession?.getVariables() ?? {};
 }
 
-export function updateEncounter(encounter:Encounter, setEncounter:Function, setModalDialogName:Function, setLines:Function) {
+export function getSystemMessage():string {
+  return theSession?.getSystemMessage() ?? 'undefined';
+}
+
+export function updateEncounter(encounter:Encounter, setEncounter:Function, setModalDialogName:Function) {
   assertNonNullable(theChatBuffer);
   setModalDialogName(null);
   setEncounter(encounter);
   _initForEncounter(encounter);
-  setLines(theChatBuffer.lines);
 }
 
-export function restartEncounter(encounter:Encounter, setLines:Function) {
+export function restartEncounter(encounter:Encounter) {
   assertNonNullable(theChatBuffer);
   _initForEncounter(encounter);
-  setLines(theChatBuffer.lines);
 }
 
-export async function submitPrompt(prompt:string, setLines:Function) { // TODO factor out of this module. See comments at top.
+export async function submitPrompt(prompt:string) {
   if (!isLlmConnected()) { 
     const message = isServingLocally() 
     ? `LLM is not connected. You're in a dev environment where this is expected (hot reloads, canceling the LLM load). You can refresh the page to load the LLM.`
@@ -200,23 +111,6 @@ export async function submitPrompt(prompt:string, setLines:Function) { // TODO f
     return; 
   }
 
-  assertNonNullable(theChatBuffer);
-  _addPlayerLine(prompt);
-  let reprocessCount = 0;
-  const MAX_REPROCESS_COUNT = 3; // Don't want an LLM-triggered infinite loop.
-  while (reprocessCount < MAX_REPROCESS_COUNT) {
-    _addGeneratingLine();
-    setLines(theChatBuffer.lines);
-    _updateSystemMessageForEncounter();
-    try {
-      const fullResponseText = await generate(prompt, (responseText:string) => _onUpdateResponse(responseText, setLines) );
-      const reprocess = _finalizeResponse(fullResponseText);
-      setLines(theChatBuffer.lines);
-      if (!reprocess) break;
-    } catch(e) {
-      console.error('Error while generating response.', e);
-      break;
-    }
-    ++reprocessCount;
-  }
+  assertNonNullable(theSession);
+  await theSession.prompt(prompt);
 }
