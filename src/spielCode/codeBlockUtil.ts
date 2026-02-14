@@ -7,6 +7,7 @@ import {executeAssignStatement, parseAssignStatement} from "./statements/assign"
 import Statement from "./types/Statement";
 import {executeCallStatement, parseCallStatement} from "./statements/call";
 import VariableManager from "./VariableManager";
+import FunctionBinding from "./types/FunctionBinding";
 
 function _rawToStatement(rawStatements:RawStatement[], startLineNo:number):[statement:Statement, skipCount:number] {
   const rawStatement = rawStatements[startLineNo];
@@ -37,17 +38,17 @@ export function rawStatementsToCodeBlock(rawStatements:RawStatement[], startStat
     return codeBlock;
 }
 
-export function executeCodeBlock(codeBlock:CodeBlock, variables:VariableManager):void {
+export function executeCodeBlock(codeBlock:CodeBlock, variables:VariableManager, functionBindings:FunctionBinding[]):void {
   for(const statement of codeBlock.statements) {
     switch(statement.statementType) {
       case StatementType.IF:
-        executeIfStatement(statement, variables);
+        executeIfStatement(statement, variables, functionBindings);
         break;
       case StatementType.ASSIGN:
         executeAssignStatement(statement, variables);
         break;
       default: // StatementType.CALL
-        executeCallStatement(statement, variables);
+        executeCallStatement(statement, variables, functionBindings);
         break;
     }
   }

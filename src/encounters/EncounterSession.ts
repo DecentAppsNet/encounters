@@ -4,7 +4,7 @@ import VariableManager, { VariableCollection } from "@/spielCode/VariableManager
 import { majorVersion, parseVersion } from "./versionUtil";
 import { textToEncounter } from "./v0/readerUtil";
 import Action from "./v0/types/Action";
-import { assertNonNullable } from "decent-portal";
+import { assert, assertNonNullable } from "decent-portal";
 import ActionType from "./v0/types/ActionType";
 import Code from "@/spielCode/types/Code";
 import { executeCode } from "@/spielCode/codeUtil";
@@ -12,6 +12,7 @@ import { addAssistantMessageToChatHistory, addUserMessageToChatHistory } from "@
 import CharacterTrigger from "./v0/types/CharacterTrigger";
 import { stripTriggerCodes } from "./encounterUtil";
 import { baseUrl } from "@/common/urlUtil";
+import FunctionBinding from "@/spielCode/types/FunctionBinding";
 
 type GenerateCallback = (messages:LLMMessages) => Promise<string>;
 type MessageCallback = (text:string) => void;
@@ -23,21 +24,21 @@ function _textToEncounter(text:string):Encounter {
   return textToEncounter(text);
 }
 
-function _criteriaMet(criteria:Code|null, variables:VariableManager):boolean {
+function _criteriaMet(criteria:Code|null, variables:VariableManager, functionBindings:FunctionBinding[]):boolean {
   if (!criteria) return true;
   const prevResult = variables.get('__result');
   assertNonNullable(variables); 
-  executeCode(criteria, variables);
+  executeCode(criteria, variables, functionBindings);
   const result = variables.get('__result') === true;
   variables.set('__result', prevResult); // Restoring the value avoids any variable name collisions.
   return result;
 }
 
-function _enableConditionalCharacterTriggers(characterTriggers:CharacterTrigger[], variables:VariableManager) {
+function _enableConditionalCharacterTriggers(characterTriggers:CharacterTrigger[], variables:VariableManager, functionBindings:FunctionBinding[]) {
   for(let i = 0; i < characterTriggers.length; ++i) {
     const trigger = characterTriggers[i];
     if (trigger.enabledCriteria === null) continue;
-    trigger.isEnabled = _criteriaMet(trigger.enabledCriteria, variables);
+    trigger.isEnabled = _criteriaMet(trigger.enabledCriteria, variables, functionBindings);
   }
 }
 
@@ -58,6 +59,23 @@ function _findCharacterTriggerInText(responseText:string, characterTriggers:Char
   return null;
 }
 
+function _defaultOnGenerate(_messages:LLMMessages):Promise<string> {
+  return Promise.resolve('onGenerate() was not bound.');
+  console.warn('EncounterSession onGenerate() was not bound. Returning default response.');
+}
+
+function _defaultOnCharacterMessage(text:string):void {
+  console.warn('EncounterSession onCharacterMessage() was not bound. Message:', text);
+}
+
+function _defaultOnNarrationMessage(text:string):void {
+  console.warn('EncounterSession onNarrationMessage() was not bound. Message:', text);
+}
+
+function _defaultOnPlayerMessage(text:string):void {
+  console.warn('EncounterSession onPlayerMessage() was not bound. Message:', text);
+}
+
 class EncounterSession {
   private _encounter:Encounter|null;
   private _variables:VariableManager;
@@ -66,13 +84,13 @@ class EncounterSession {
   private _onNarrationMessage:MessageCallback;
   private _onPlayerMessage:MessageCallback;
   private _llmMessages:LLMMessages;
+  private _functionBindings:FunctionBinding[] = [];
 
-  constructor(maxChatHistorySize:number = 100, onGenerate:GenerateCallback, onCharacterMessage:MessageCallback, 
-      onNarrationMessage:MessageCallback, onPlayerMessage:MessageCallback) {
-    this._onGenerate = onGenerate;
-    this._onCharacterMessage = onCharacterMessage;
-    this._onNarrationMessage = onNarrationMessage;
-    this._onPlayerMessage = onPlayerMessage;
+  constructor(maxChatHistorySize:number = 100) {
+    this._onGenerate = _defaultOnGenerate;
+    this._onCharacterMessage = _defaultOnCharacterMessage;
+    this._onNarrationMessage = _defaultOnNarrationMessage;
+    this._onPlayerMessage = _defaultOnPlayerMessage;
     this._encounter = null;
     this._variables = new VariableManager();
     this._llmMessages = {
@@ -80,6 +98,7 @@ class EncounterSession {
       maxChatHistorySize,
       systemMessage: null
     };
+    this._functionBindings = [];
   }
 
   private _handleActions(actions:Action[]):
@@ -90,11 +109,11 @@ class EncounterSession {
       const action = actions[i];
       switch(action.actionType) {
         case ActionType.NARRATION_MESSAGE:
-          if (_criteriaMet(action.criteria, this._variables)) this._onNarrationMessage(action.messages.nextMessage());
+          if (_criteriaMet(action.criteria, this._variables, this._functionBindings)) this._onNarrationMessage(action.messages.nextMessage());
         break;
 
         case ActionType.CHARACTER_MESSAGE:
-          if (_criteriaMet(action.criteria, this._variables)) {
+          if (_criteriaMet(action.criteria, this._variables, this._functionBindings)) {
             const message = action.messages.nextMessage();
             this._onCharacterMessage(message);
             addAssistantMessageToChatHistory(this._llmMessages, message);
@@ -102,7 +121,7 @@ class EncounterSession {
         break;
 
         case ActionType.PLAYER_MESSAGE:
-          if (_criteriaMet(action.criteria, this._variables)) {
+          if (_criteriaMet(action.criteria, this._variables, this._functionBindings)) {
             const message = action.messages.nextMessage();
             this._onPlayerMessage(message);
             addUserMessageToChatHistory(this._llmMessages, message);
@@ -110,18 +129,18 @@ class EncounterSession {
         break;
         
         case ActionType.INSTRUCTION_MESSAGE:
-          if (_criteriaMet(action.criteria, this._variables)) {
+          if (_criteriaMet(action.criteria, this._variables, this._functionBindings)) {
             if (systemMessage.length) systemMessage += '\n';
             systemMessage += action.messages.nextMessage();
           }
         break;
 
         case ActionType.CODE:
-          executeCode(action.code, this._variables);
+          executeCode(action.code, this._variables, this._functionBindings);
         break;
 
         case ActionType.REPROCESS:
-          if (_criteriaMet(action.criteria, this._variables)) reprocess = true;
+          if (_criteriaMet(action.criteria, this._variables, this._functionBindings)) reprocess = true;
         break;
 
         default:
@@ -131,10 +150,9 @@ class EncounterSession {
     return { systemMessage, reprocess };
   }
 
-
   private _updateSystemMessage() { // Important: not idempotent. Variable state can change in _handleActions().
     assertNonNullable(this._encounter);
-    _enableConditionalCharacterTriggers(this._encounter.characterTriggers, this._variables);
+    _enableConditionalCharacterTriggers(this._encounter.characterTriggers, this._variables, this._functionBindings);
     let {systemMessage} = this._handleActions(this._encounter.instructionActions); 
     for(let i = 0; i < this._encounter.characterTriggers.length; ++i) {
       const { criteria, triggerCode, isEnabled } = this._encounter.characterTriggers[i];
@@ -202,8 +220,69 @@ class EncounterSession {
   getSystemMessage():string {
     return this._llmMessages.systemMessage ?? 'undefined';
   }
-}
 
-// TODO delete unused functions from encounterUtil.ts.
+  unbindAllFunctions() {
+    this._onGenerate = _defaultOnGenerate;
+    this._onCharacterMessage = _defaultOnCharacterMessage;
+    this._onNarrationMessage = _defaultOnNarrationMessage;
+    this._onPlayerMessage = _defaultOnPlayerMessage;
+    this._functionBindings = [];
+  }
+
+  unbindFunction(functionName:string) {
+    switch(functionName) {
+      case 'onGenerate':
+        this._onGenerate = _defaultOnGenerate;
+      break;
+
+      case 'onCharacterMessage':
+        this._onCharacterMessage = _defaultOnCharacterMessage;
+      break;
+
+      case 'onNarrationMessage':
+        this._onNarrationMessage = _defaultOnNarrationMessage;
+      break;
+
+      case 'onPlayerMessage':
+        this._onPlayerMessage = _defaultOnPlayerMessage;
+      break;
+
+      default:
+        this._functionBindings = this._functionBindings.filter(binding => binding.functionName !== functionName);
+      break;
+    }
+  }
+
+  bindFunction(func:Function, functionName?:string) {
+    if (!functionName) functionName = func.name;
+    const paramCount = func.length;
+    this.unbindFunction(functionName);
+    switch(functionName) {
+      case 'onGenerate':
+        assert(paramCount === 1);
+        this._onGenerate = func as GenerateCallback;
+      break;
+
+      case 'onCharacterMessage':
+        assert(paramCount === 1);
+        this._onCharacterMessage = func as MessageCallback;
+      break;
+
+      case 'onNarrationMessage':
+        assert(paramCount === 1);
+        this._onNarrationMessage = func as MessageCallback;
+      break;
+
+      case 'onPlayerMessage':
+        assert(paramCount === 1);
+        this._onPlayerMessage = func as MessageCallback;
+      break;
+
+      default:
+        this._functionBindings.push({ functionName, paramCount, function: func });
+      break;
+    }
+  }
+}
 
 export default EncounterSession;

@@ -74,11 +74,11 @@ async function _onGenerate(messages:LLMMessages, setLines:Function):Promise<stri
 
 export function initChat(encounter:Encounter, setLines:Function) {
   theChatBuffer = new TextConsoleBuffer(MAX_LINE_COUNT);
-  theSession = new EncounterSession(MAX_LINE_COUNT, 
-    (m) => _onGenerate(m, setLines),
-    (m) => _addCharacterLine(m, setLines), 
-    (m) => _addNarrationLine(m, setLines), 
-    (m) => _addPlayerLine(m, setLines));
+  theSession = new EncounterSession(MAX_LINE_COUNT);
+  theSession.bindFunction((m:LLMMessages) => _onGenerate(m, setLines), 'onGenerate');
+  theSession.bindFunction((t:string) => _addCharacterLine(t, setLines), 'onCharacterMessage');
+  theSession.bindFunction((t:string) => _addNarrationLine(t, setLines), 'onNarrationMessage');
+  theSession.bindFunction((t:string) => _addPlayerLine(t, setLines), 'onPlayerMessage');
   _initForEncounter(encounter);
 }
 

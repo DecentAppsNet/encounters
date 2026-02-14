@@ -4,7 +4,6 @@ import StatementType from "./StatementType";
 type CallStatement = {
     statementType:StatementType.CALL;
     functionName:string;
-    function:Function;
     parameters:Expression[];
     statementOffset:number;
 };

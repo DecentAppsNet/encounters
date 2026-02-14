@@ -8,14 +8,7 @@ import RawStatement from "../types/RawStatement";
 import SpielCodeError from "../types/SpielCodeError";
 import {createStatementCodePosition} from "../codePositionUtil";
 import { assert } from "decent-portal";
-
-function _getFunction(functionName:string, functionNameOffset:number):Function {
-  switch(functionName) {
-    case 'rand': return (from:number, to:number) => Math.floor(Math.random() * (to - from + 1)) + from;
-    case 'restartSpiel': return () => { /* TODO */ };
-    default: throw new SpielCodeError(`Unknown function: "${functionName}"`, createStatementCodePosition(functionNameOffset, 0));
-  }
-}
+import FunctionBinding from "../types/FunctionBinding";
 
 function _parseParams(statementText:string, statementOffset:number):Expression[] {
   const leftParenPos = statementText.indexOf('(');
@@ -46,26 +39,25 @@ function _parseFunctionName(statementText:string, statementOffset:number):string
 
 export function parseCallStatement(rawStatement:RawStatement):CallStatement {
   const functionName = _parseFunctionName(rawStatement.text, rawStatement.statementOffset);
-  const _function = _getFunction(functionName, rawStatement.statementOffset);
   const parameters = _parseParams(rawStatement.text, rawStatement.statementOffset);
   const statementOffset = rawStatement.statementOffset;
-  return {statementType:StatementType.CALL, functionName, function:_function, parameters, statementOffset};
+  return {statementType:StatementType.CALL, functionName, parameters, statementOffset};
 }
 
-export function executeCallStatement(statement:CallStatement, variables:VariableManager):void {
+export function executeCallStatement(statement:CallStatement, variables:VariableManager, functionBindings:FunctionBinding[]):void {
   const paramValues = statement.parameters.map(param => expressionToValue(param, variables));
   try {
-    statement.function(...paramValues);
+    const functionBinding = functionBindings.find(binding => binding.functionName === statement.functionName);
+    if (!functionBinding) throw new Error(`it did not match name of a bound function`);
+    if (paramValues.length !== functionBinding.paramCount) throw new Error(`expected ${functionBinding.paramCount} parameters but got ${paramValues.length}.`);
+    functionBinding.function(...paramValues);
   } catch(error) {
-    // There are currently no SpielCodeErrors thrown by executeCodeBlock. As such, this is not tested.
-    /* v8 ignore start */
     {
       if (error instanceof Error) {
-        throw new SpielCodeError(`Execution of ${statement.functionName}() failed with ${error.message}`, 
+        throw new SpielCodeError(`Execution of ${statement.functionName}() failed because ${error.message}`, 
             createStatementCodePosition(statement.statementOffset, 0));
       }
       throw error;
     }
-    /* v8 ignore end */
   }
 }

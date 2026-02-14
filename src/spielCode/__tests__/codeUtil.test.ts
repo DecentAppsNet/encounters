@@ -2,14 +2,18 @@ import { describe, expect, it } from 'vitest';
 
 import { textToCode, executeCode } from "../codeUtil";
 import VariableManager from "../VariableManager";
-import CodePosition, {UNKNOWN_POSITION} from "../types/CodePosition";
+import CodePosition from "../types/CodePosition";
 import SpielCodeError from "../types/SpielCodeError";
 
 describe('codeUtil', () => {
   function _runCode(text:string, variableManager?:VariableManager):any {
+    const functionBindings = [
+      { functionName: 'rand', paramCount: 2, function: (from:number, to:number) => Math.floor(Math.random() * (to - from + 1)) + from },
+      { functionName: 'restartSpiel', paramCount: 0, function: () => { } }
+    ];
     const code = textToCode(text);
     const variables = variableManager ?? new VariableManager();
-    executeCode(code, variables);
+    executeCode(code, variables, functionBindings);
     return variables.get('result');
   }
   
@@ -589,10 +593,10 @@ describe('codeUtil', () => {
   });
   
   describe('code position for errors', () => {
-    function _runThrowingCode(text:string, nodeNo?:number):CodePosition {
+    function _runThrowingCode(text:string):CodePosition {
       try {
-        const code = textToCode(text, nodeNo);
-        executeCode(code, new VariableManager(), nodeNo);
+        const code = textToCode(text);
+        executeCode(code, new VariableManager());
       } catch(e) {
         if (e instanceof SpielCodeError) return e.codePosition;
         throw e;
@@ -601,23 +605,15 @@ describe('codeUtil', () => {
     }
     
     it('returns correct code position for an interpretation error within a simple statement', () => {
-      expect(_runThrowingCode('result=%%%')).toEqual({nodeNo:UNKNOWN_POSITION, lineNo:0, charNo: 7});
+      expect(_runThrowingCode('result=%%%')).toEqual({lineNo:0, charNo: 7});
     });
     
     it('returns correct code position for an interpretation error within a statement with a line break', () => {
-      expect(_runThrowingCode('\nresult=%%%')).toEqual({nodeNo:UNKNOWN_POSITION, lineNo:1, charNo: 7});
+      expect(_runThrowingCode('\nresult=%%%')).toEqual({lineNo:1, charNo: 7});
     });
     
     it('returns correct code position for an interpretation error within a statement with multiple line breaks', () => {
-      expect(_runThrowingCode('\n\nresult=%%%\nresult=3')).toEqual({nodeNo:UNKNOWN_POSITION, lineNo:2, charNo: 7});
-    });
-    
-    it('returns correct code position for an interpretation error within a statement with multiple line breaks and a nodeNo', () => {
-      expect(_runThrowingCode('\n\nresult=%%%\nresult=3', 5)).toEqual({nodeNo:5, lineNo:2, charNo: 7});
-    });
-    
-    it('returns correct code position for an interpretation error within a statement with multiple line breaks and a nodeNo', () => {
-      expect(_runThrowingCode('\n\nresult=%%%\nresult=3', 5)).toEqual({nodeNo:5, lineNo:2, charNo: 7});
+      expect(_runThrowingCode('\n\nresult=%%%\nresult=3')).toEqual({lineNo:2, charNo: 7});
     });
   });
 });

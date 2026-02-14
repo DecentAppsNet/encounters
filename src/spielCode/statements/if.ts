@@ -7,6 +7,7 @@ import {executeCodeBlock, rawStatementsToCodeBlock} from "../codeBlockUtil";
 import VariableManager from "../VariableManager";
 import SpielCodeError from "../types/SpielCodeError";
 import {createStatementCodePosition} from "../codePositionUtil";
+import FunctionBinding from "../types/FunctionBinding";
 
 type StatementRange = { fromNo:number, toNo:number };
 
@@ -100,21 +101,21 @@ export function parseIfStatement(statements:RawStatement[], startNo:number):[sta
   return [statement, rawStatementCount];
 }
 
-export function executeIfStatement(statement:IfStatement, variables:VariableManager):void {
+export function executeIfStatement(statement:IfStatement, variables:VariableManager, functionBindings:FunctionBinding[]):void {
   const value = expressionToValue(statement.expression, variables);
   if (value) {
-    executeCodeBlock(statement.thenCodeBlock, variables);
+    executeCodeBlock(statement.thenCodeBlock, variables, functionBindings);
     return;
   }
   for(let elseIfI = 0; elseIfI < statement.elseIfs.length; ++elseIfI) {
     const elseIf = statement.elseIfs[elseIfI];
     const elseIfValue = expressionToValue(elseIf.expression, variables);
     if (elseIfValue) {
-      executeCodeBlock(elseIf.thenCodeBlock, variables);
+      executeCodeBlock(elseIf.thenCodeBlock, variables, functionBindings);
       return;
     }
   }
   if (statement.elseCodeBlock) {
-    executeCodeBlock(statement.elseCodeBlock, variables);
+    executeCodeBlock(statement.elseCodeBlock, variables, functionBindings);
   }
 }
