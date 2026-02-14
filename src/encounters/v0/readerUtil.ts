@@ -9,6 +9,7 @@ import { parseVersion } from "../versionUtil";
 import { textToCode } from "@/spielCode/codeUtil";
 import Code from "@/spielCode/types/Code";
 import MessageSet from "./types/MessageSet";
+import Memory from "./types/Memory";
 
 function _stripEnclosers(text:string, enclosingText:string):string {
   text = text.trim();
@@ -109,6 +110,30 @@ function _parseInstructionSection(instructionSection?:string):[Action[], Charact
   return [actions, triggers];
 }
 
+function _parseMemorySectionName(memorySectionName:string):{matchPhrases:string[], enabledCriteria:Code|null} {
+  const {messages, criteria} = _parseMessageLine(memorySectionName);
+  const matchPhrases = messages.toArray();
+  return {matchPhrases, enabledCriteria:criteria};
+}
+
+function _parseMemorySection(memorySectionName:string, memorySection:string):Memory {
+  const actions = _parseActions(memorySection);
+  const { matchPhrases, enabledCriteria } = _parseMemorySectionName(memorySectionName);
+  return {
+    matchPhrases,
+    enabledCriteria,
+    actions
+  }
+}
+
+function _parseMemoriesSection(memoriesSection?:string):Memory[] {
+  if (!memoriesSection) return [];
+  const memorySections = parseSections(memoriesSection, 2);
+  const memorySectionNames = Object.keys(memorySections);
+  const memories = memorySectionNames.map(memorySectionName => _parseMemorySection(memorySectionName, memorySections[memorySectionName]));
+  return memories;
+}
+
 export function textToEncounter(text:string):Encounter {
   const version = parseVersion(text); // Throws if missing/invalid.
   const sections = parseSections(text);
@@ -119,8 +144,9 @@ export function textToEncounter(text:string):Encounter {
 
   const startActions = _parseStartSection(sections.Start);
   const [instructionActions, characterTriggers] = _parseInstructionSection(sections.Instructions);
+  const memories = _parseMemoriesSection(sections.Memories);
 
   return {
-    version, title, model, startActions, instructionActions, characterTriggers, sourceText:text 
+    version, title, model, startActions, instructionActions, characterTriggers, memories, sourceText:text 
   };
 }

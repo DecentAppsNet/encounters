@@ -5,6 +5,7 @@ import WaitingEllipsis from "../waitingEllipsis/WaitingEllipsis";
 
 export const PLAYER_PREFIX = 'PLAYER:';
 export const NARRATION_PREFIX = 'NARRATION:';
+export const GENERATING_SUFFIX = '\u2026'; // Elipsis Unicode char.
 
 type Props = {
   lines:TextConsoleLine[]
@@ -12,7 +13,7 @@ type Props = {
 
 function _onRenderLine(key:number, text:string) {
   let className = '';
-  if (text === '...') {
+  if (text === GENERATING_SUFFIX) {
     return <WaitingEllipsis />
   } else if (text.startsWith(PLAYER_PREFIX)) {
     text = text.substring(PLAYER_PREFIX.length);
@@ -23,7 +24,7 @@ function _onRenderLine(key:number, text:string) {
   } else {
     className = styles.characterLine;
   }
-  if (text.endsWith('...')) {
+  if (text.endsWith(GENERATING_SUFFIX)) {
     text = text.substring(0, text.length - 3);
     return (<p className={className} key={key}>{text}<WaitingEllipsis trailing/></p>);
   } else {

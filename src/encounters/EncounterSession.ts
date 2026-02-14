@@ -8,7 +8,7 @@ import { assert, assertNonNullable } from "decent-portal";
 import ActionType from "./v0/types/ActionType";
 import Code from "@/spielCode/types/Code";
 import { executeCode } from "@/spielCode/codeUtil";
-import { addAssistantMessageToChatHistory, addUserMessageToChatHistory } from "@/llm/messageUtil";
+import { addAssistantMessageToChatHistory, addToolMessageToChatHistory, addUserMessageToChatHistory } from "@/llm/messageUtil";
 import CharacterTrigger from "./v0/types/CharacterTrigger";
 import { stripTriggerCodes } from "./encounterUtil";
 import { baseUrl } from "@/common/urlUtil";
@@ -59,9 +59,30 @@ function _findCharacterTriggerInText(responseText:string, characterTriggers:Char
   return null;
 }
 
+function _isLowerCaseAlphaChar(char:string):boolean {
+  return char >= 'a' && char <= 'z';
+}
+
+function _doesTextContainPhrase(text:string, phrases:string[]):boolean {
+  const _isAtWordBoundary = (_pos:number) => !_isLowerCaseAlphaChar(text[_pos]);
+  
+  text = text.toLowerCase();
+  for(let phraseI = 0; phraseI < phrases.length; ++phraseI) {
+    const phrase = phrases[phraseI].toLowerCase();
+    let pos = 0;
+    while (pos < text.length) {
+      pos = text.indexOf(phrase, pos);
+      if (pos === -1) break;
+      if (_isAtWordBoundary(pos-1) && _isAtWordBoundary(pos+phrase.length)) return true;
+      pos += phrase.length;
+    }
+  }
+  return false;
+}
+
 function _defaultOnGenerate(_messages:LLMMessages):Promise<string> {
-  return Promise.resolve('onGenerate() was not bound.');
   console.warn('EncounterSession onGenerate() was not bound. Returning default response.');
+  return Promise.resolve('onGenerate() was not bound.');
 }
 
 function _defaultOnCharacterMessage(text:string):void {
@@ -102,9 +123,9 @@ class EncounterSession {
   }
 
   private _handleActions(actions:Action[]):
-      {systemMessage:string, reprocess:boolean} {
+      {instructions:string, reprocess:boolean} {
     let reprocess = false;
-    let systemMessage = '';
+    let instructions = '';
     for(let i = 0; i < actions.length; ++i) {
       const action = actions[i];
       switch(action.actionType) {
@@ -130,8 +151,8 @@ class EncounterSession {
         
         case ActionType.INSTRUCTION_MESSAGE:
           if (_criteriaMet(action.criteria, this._variables, this._functionBindings)) {
-            if (systemMessage.length) systemMessage += '\n';
-            systemMessage += action.messages.nextMessage();
+            if (instructions.length) instructions += '\n';
+            instructions += action.messages.nextMessage();
           }
         break;
 
@@ -147,19 +168,31 @@ class EncounterSession {
           throw Error('Unexpected');
       }
     }
-    return { systemMessage, reprocess };
+    return { instructions, reprocess };
+  }
+
+  private _appendMatchingMemoriesToChatHistory(playerText:string) {
+    assertNonNullable(this._encounter);
+    for(let i = 0; i < this._encounter.memories.length; ++i) {
+      const memory = this._encounter.memories[i];
+      if (!_doesTextContainPhrase(playerText, memory.matchPhrases) || !_criteriaMet(memory.enabledCriteria, this._variables, this._functionBindings)) continue;
+      const { instructions } = this._handleActions(memory.actions); // TODO: it is possible for player and character messages to be displayed. Is that a bug or a feature?
+      const memoryMessage = `I remember this about ${memory.matchPhrases[0]}: ${instructions}\nEND RETRIEVED CONTEXT`;
+      if (this._llmMessages.chatHistory.find(m => m.content === memoryMessage)) continue; // Don't repeat memories already in context.
+      addToolMessageToChatHistory(this._llmMessages, memoryMessage); // Message is added to end of chat history, so LLM has it for context, but not displayed.
+    }
   }
 
   private _updateSystemMessage() { // Important: not idempotent. Variable state can change in _handleActions().
     assertNonNullable(this._encounter);
     _enableConditionalCharacterTriggers(this._encounter.characterTriggers, this._variables, this._functionBindings);
-    let {systemMessage} = this._handleActions(this._encounter.instructionActions); 
+    let {instructions} = this._handleActions(this._encounter.instructionActions); 
     for(let i = 0; i < this._encounter.characterTriggers.length; ++i) {
       const { criteria, triggerCode, isEnabled } = this._encounter.characterTriggers[i];
       if (!isEnabled) continue;
-      systemMessage += `\nIf ${criteria} then output @${triggerCode} and nothing else.`;
+      instructions += `\nIf ${criteria} then output @${triggerCode} and nothing else.`;
     }
-    this._llmMessages.systemMessage = systemMessage;
+    this._llmMessages.systemMessage = instructions;
   }
 
   private async _generateWithResponseHandling() {
@@ -185,6 +218,7 @@ class EncounterSession {
   async start(encounter:Encounter) {
     this._encounter = encounter;
     const {reprocess} = this._handleActions(this._encounter.startActions);
+    this._llmMessages.chatHistory = [];
     if (reprocess) await this._generateWithResponseHandling();
   }
 
@@ -200,14 +234,14 @@ class EncounterSession {
   async restart() {
     if (!this._encounter) throw Error('No encounter loaded');
     this._variables = new VariableManager();
-    const {reprocess, systemMessage} = this._handleActions(this._encounter.startActions);
+    const {reprocess} = this._handleActions(this._encounter.startActions);
     this._llmMessages.chatHistory = [];
-    this._llmMessages.systemMessage = systemMessage;
     if (reprocess) await this._generateWithResponseHandling();
   }
 
   async prompt(playerText:string) {
     if (!this._encounter) throw Error('No encounter loaded');
+    this._appendMatchingMemoriesToChatHistory(playerText);
     addUserMessageToChatHistory(this._llmMessages, playerText);
     this._onPlayerMessage(playerText);
     await this._generateWithResponseHandling();

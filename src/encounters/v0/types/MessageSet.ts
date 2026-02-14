@@ -15,6 +15,10 @@ class MessageSet {
     return this._messages[this._lastMessageI];
   }
 
+  toArray():string[] {
+    return [...this._messages];
+  }
+
   get count():number { return this._messages.length;}
 }
 

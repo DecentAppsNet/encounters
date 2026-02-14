@@ -52,12 +52,11 @@ export function executeCallStatement(statement:CallStatement, variables:Variable
     if (paramValues.length !== functionBinding.paramCount) throw new Error(`expected ${functionBinding.paramCount} parameters but got ${paramValues.length}.`);
     functionBinding.function(...paramValues);
   } catch(error) {
-    {
-      if (error instanceof Error) {
-        throw new SpielCodeError(`Execution of ${statement.functionName}() failed because ${error.message}`, 
-            createStatementCodePosition(statement.statementOffset, 0));
-      }
-      throw error;
+    if (error instanceof Error) {
+      throw new SpielCodeError(`Execution of ${statement.functionName}() failed because ${error.message}`, 
+          createStatementCodePosition(statement.statementOffset, 0));
+    /* v8 ignore start */ // Nothing currently throws a non-Error.
     }
-  }
+    throw error;
+  } /* v8 ignore end */
 }

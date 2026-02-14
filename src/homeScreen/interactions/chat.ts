@@ -1,6 +1,6 @@
 import { assertNonNullable } from "decent-portal";
 
-import { NARRATION_PREFIX, PLAYER_PREFIX } from "@/components/chat/ChatHistory";
+import { GENERATING_SUFFIX, NARRATION_PREFIX, PLAYER_PREFIX } from "@/components/chat/ChatHistory";
 import TextConsoleBuffer from "@/components/textConsole/TextConsoleBuffer";
 import { isServingLocally } from "@/developer/devEnvUtil";
 import Encounter from "@/encounters/types/Encounter";
@@ -10,7 +10,6 @@ import { stripTriggerCodes } from "@/encounters/encounterUtil";
 import { generate, isLlmConnected } from "@/llm/llmUtil";
 import { VariableCollection } from "@/spielCode/VariableManager";
 
-export const GENERATING = '...';
 const MAX_LINE_COUNT = 100;
 
 let theChatBuffer:TextConsoleBuffer|null = null;
@@ -20,7 +19,7 @@ function _isLastLineGenerating():boolean {
   assertNonNullable(theChatBuffer);
   if (!theChatBuffer.lines.length) return false;
   const lastLine = theChatBuffer.lines[theChatBuffer.lines.length - 1].text;
-  return lastLine.endsWith(GENERATING);
+  return lastLine.endsWith(GENERATING_SUFFIX);
 }
 
 function _addChatBufferLine(line:string, setLines:Function) {
@@ -50,13 +49,13 @@ function _addNarrationLine(line:string, setLines:Function) {
 
 function _addGeneratingLine(setLines:Function) {
   assertNonNullable(theChatBuffer);
-  _addChatBufferLine(GENERATING, setLines);
+  _addChatBufferLine(GENERATING_SUFFIX, setLines);
 }
 
 function _onUpdateResponse(responseText:string, setLines:Function) {
   assertNonNullable(theChatBuffer);
   const displayText = stripTriggerCodes(responseText);
-  _addChatBufferLine(`${displayText}${GENERATING}`, setLines);
+  _addChatBufferLine(`${displayText}${GENERATING_SUFFIX}`, setLines);
 }
 
 function _initForEncounter(encounter:Encounter) {

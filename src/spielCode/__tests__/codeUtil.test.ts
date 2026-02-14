@@ -69,7 +69,7 @@ describe('codeUtil', () => {
     });
     
     it('throws an error if the function name is unknown/unsupported', () => {
-      expect(() => _runCode('fetch("sendDataToSomeNastyWebsite")')).toThrow();
+      expect(() => _runCode(`fetch('sendDataToSomeNastyWebsite')`)).toThrow();
     });
     
     it('throws an error when the function call is missing its opening parenthesis', () => {
@@ -78,6 +78,10 @@ describe('codeUtil', () => {
     
     it('throws an error when the function call is missing its closing parenthesis', () => {
       expect(() => _runCode('rand(3,5')).toThrow();
+    });
+
+    it('throws an error when function call parameter count does not match bound funciton', () => {
+      expect(() => _runCode('rand(3)')).toThrow();
     });
   });
 
