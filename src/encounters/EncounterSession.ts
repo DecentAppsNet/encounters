@@ -123,14 +123,18 @@ class EncounterSession {
   }
 
   private _handleActions(actions:Action[]):
-      {instructions:string, reprocess:boolean} {
+      {instructions:string, reprocess:boolean, wereMessagesAdded:boolean} {
     let reprocess = false;
     let instructions = '';
+    let wereMessagesAdded = false;
     for(let i = 0; i < actions.length; ++i) {
       const action = actions[i];
       switch(action.actionType) {
         case ActionType.NARRATION_MESSAGE:
-          if (_criteriaMet(action.criteria, this._variables, this._functionBindings)) this._onNarrationMessage(action.messages.nextMessage());
+          if (_criteriaMet(action.criteria, this._variables, this._functionBindings)) {
+            this._onNarrationMessage(action.messages.nextMessage());
+            wereMessagesAdded = true;
+          }
         break;
 
         case ActionType.CHARACTER_MESSAGE:
@@ -138,6 +142,7 @@ class EncounterSession {
             const message = action.messages.nextMessage();
             this._onCharacterMessage(message);
             addAssistantMessageToChatHistory(this._llmMessages, message);
+            wereMessagesAdded = true;
           }
         break;
 
@@ -146,6 +151,7 @@ class EncounterSession {
             const message = action.messages.nextMessage();
             this._onPlayerMessage(message);
             addUserMessageToChatHistory(this._llmMessages, message);
+            wereMessagesAdded = true;
           }
         break;
         
@@ -168,19 +174,23 @@ class EncounterSession {
           throw Error('Unexpected');
       }
     }
-    return { instructions, reprocess };
+    return { instructions, reprocess, wereMessagesAdded };
   }
 
-  private _appendMatchingMemoriesToChatHistory(playerText:string) {
+  private _appendMatchingMemoriesToChatHistory(playerText:string):boolean {
     assertNonNullable(this._encounter);
+    let messagesAdded = false;
     for(let i = 0; i < this._encounter.memories.length; ++i) {
       const memory = this._encounter.memories[i];
       if (!_doesTextContainPhrase(playerText, memory.matchPhrases) || !_criteriaMet(memory.enabledCriteria, this._variables, this._functionBindings)) continue;
-      const { instructions } = this._handleActions(memory.actions); // TODO: it is possible for player and character messages to be displayed. Is that a bug or a feature?
-      const memoryMessage = `I remember this about ${memory.matchPhrases[0]}: ${instructions}\nEND RETRIEVED CONTEXT`;
+      const { instructions, wereMessagesAdded } = this._handleActions(memory.actions);
+      if (wereMessagesAdded) messagesAdded = true;
+      if (!instructions.length) continue;
+      const memoryMessage = `I remember this about ${memory.matchPhrases[0]}: ${instructions}\n`;
       if (this._llmMessages.chatHistory.find(m => m.content === memoryMessage)) continue; // Don't repeat memories already in context.
       addToolMessageToChatHistory(this._llmMessages, memoryMessage); // Message is added to end of chat history, so LLM has it for context, but not displayed.
     }
+    return messagesAdded;
   }
 
   private _updateSystemMessage() { // Important: not idempotent. Variable state can change in _handleActions().
@@ -241,9 +251,10 @@ class EncounterSession {
 
   async prompt(playerText:string) {
     if (!this._encounter) throw Error('No encounter loaded');
-    this._appendMatchingMemoriesToChatHistory(playerText);
     addUserMessageToChatHistory(this._llmMessages, playerText);
     this._onPlayerMessage(playerText);
+    const skipResponseHandling = this._appendMatchingMemoriesToChatHistory(playerText);
+    if (skipResponseHandling) return;
     await this._generateWithResponseHandling();
   }
 

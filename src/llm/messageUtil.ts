@@ -13,8 +13,12 @@ export function addAssistantMessageToChatHistory(messages:LLMMessages, message:s
   if (messages.chatHistory.length > messages.maxChatHistorySize) messages.chatHistory.shift();
 }
 
-export function addToolMessageToChatHistory(messages:LLMMessages, message:string) {
-  messages.chatHistory.push({role:'tool', content:message, tool_call_id:`${++toolCallId}`});
+export function addToolMessageToChatHistory(messages:LLMMessages, message:string, insertBeforeLastMessage = false) {
+  if (insertBeforeLastMessage && messages.chatHistory.length) {
+    messages.chatHistory.splice(messages.chatHistory.length - 1, 0, {role:'tool', content:message, tool_call_id:`${++toolCallId}`});
+  } else {
+    messages.chatHistory.push({role:'tool', content:message, tool_call_id:`${++toolCallId}`});
+  }
   if (messages.chatHistory.length > messages.maxChatHistorySize) messages.chatHistory.shift();
 }
 
