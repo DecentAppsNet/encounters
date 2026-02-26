@@ -42,7 +42,7 @@ function HomeScreen() {
       </div>
       <div className={styles.encounterActions}>
         <h1>Encounter</h1>
-        <ContentButton onClick={() => restartEncounter(encounter)} text="Restart"/>
+        <ContentButton onClick={() => restartEncounter()} text="Restart"/>
         <ContentButton onClick={() => setModalDialogName(EncounterConfigDialog.name)} text="Edit" />
         <ContentButton onClick={async () => { 
           const nextEncounter = await importEncounterFile();

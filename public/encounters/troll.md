@@ -34,7 +34,8 @@ _The troll reluctantly disappeares under his bridge, allowing you to pass._
 
 ## user says they are afraid of you
 
-> Be afraid! I am a fearsome troll, after all.|Morsels should fear trolls!|Fear may yet keep ye out of my belly!
+_The troll is embarrassed to cause you fear, and scurries under his bridge to avoid you._
+`goUrl('encounters/trollUnderBridge.md')`
 
 # Memories
 

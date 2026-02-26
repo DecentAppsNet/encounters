@@ -9,6 +9,7 @@ import LLMMessages from "@/llm/types/LLMMessages";
 import { stripTriggerCodes } from "@/encounters/encounterUtil";
 import { generate, isLlmConnected } from "@/llm/llmUtil";
 import { VariableCollection } from "@/spielCode/VariableManager";
+import { bindEncounterFunctions } from "./encounterFunctions";
 
 const MAX_LINE_COUNT = 100;
 
@@ -78,6 +79,7 @@ export function initChat(encounter:Encounter, setLines:Function) {
   theSession.bindFunction((t:string) => _addCharacterLine(t, setLines), 'onCharacterMessage');
   theSession.bindFunction((t:string) => _addNarrationLine(t, setLines), 'onNarrationMessage');
   theSession.bindFunction((t:string) => _addPlayerLine(t, setLines), 'onPlayerMessage');
+  bindEncounterFunctions(theSession);
   _initForEncounter(encounter);
 }
 
@@ -96,9 +98,11 @@ export function updateEncounter(encounter:Encounter, setEncounter:Function, setM
   _initForEncounter(encounter);
 }
 
-export function restartEncounter(encounter:Encounter) {
+export function restartEncounter() {
   assertNonNullable(theChatBuffer);
-  _initForEncounter(encounter);
+  assertNonNullable(theSession);
+  theChatBuffer.clear();
+  theSession.restart();
 }
 
 export async function submitPrompt(prompt:string) {
