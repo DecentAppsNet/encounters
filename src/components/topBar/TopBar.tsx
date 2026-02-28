@@ -7,7 +7,7 @@ const appLinks = [
   { description: "Support", url: "https://github.com/DecentAppsNet/encounters/issues" }
 ];
 
-const contributorText = 'Erik Hermansen';
+const contributorText = 'Erik Hermansen, Peter Turner';
 
 type Props = {
   onAboutClick:Function
