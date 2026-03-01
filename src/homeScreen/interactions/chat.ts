@@ -11,6 +11,7 @@ import { generate, isLlmConnected } from "@/llm/llmUtil";
 import { VariableCollection } from "@/spielCode/VariableManager";
 import { bindEncounterFunctions } from "./encounterFunctions";
 import { appendRecentPrompt } from "@/persistence/recentPrompts";
+import { setLastEncounterUrl } from "@/persistence/lastEncounter";
 
 const MAX_LINE_COUNT = 100;
 
@@ -92,18 +93,14 @@ export function getSystemMessage():string {
   return theSession?.getSystemMessage() ?? 'undefined';
 }
 
-export function updateEncounter(encounter:Encounter, setEncounter:Function, setModalDialogName:Function) {
-  assertNonNullable(theChatBuffer);
-  setModalDialogName(null);
-  setEncounter(encounter);
-  _initForEncounter(encounter);
-}
-
-export function restartEncounter() {
+export async function startFromUrl(encounterUrl:string, setLines:Function, setEncounter:Function) {
   assertNonNullable(theChatBuffer);
   assertNonNullable(theSession);
   theChatBuffer.clear();
-  theSession.restart();
+  setLines([]);
+  await theSession.startFromUrl(encounterUrl);
+  setEncounter(theSession.encounter);
+  await setLastEncounterUrl(encounterUrl);
 }
 
 export async function submitPrompt(prompt:string, setRecentPrompts:Function) {

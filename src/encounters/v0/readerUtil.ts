@@ -5,11 +5,12 @@ import Encounter from "./types/Encounter";
 import Action, { CodeAction } from "./types/Action";
 import ActionType from "./types/ActionType";
 import CharacterTrigger from "./types/CharacterTrigger";
-import { parseVersion } from "../versionUtil";
+import { parseEncounterVersion, parseEncounterListVersion } from "../versionUtil";
 import { textToCode } from "@/spielCode/codeUtil";
 import Code from "@/spielCode/types/Code";
 import MessageSet from "./types/MessageSet";
 import Memory from "./types/Memory";
+import EncounterListV0 from "./types/EncounterList";
 
 function _stripEnclosers(text:string, enclosingText:string):string {
   text = text.trim();
@@ -135,7 +136,7 @@ function _parseMemoriesSection(memoriesSection?:string):Memory[] {
 }
 
 export function textToEncounter(text:string):Encounter {
-  const version = parseVersion(text); // Throws if missing/invalid.
+  const version = parseEncounterVersion(text); // Throws if missing/invalid.
   const sections = parseSections(text);
 
   const generalSettings = sections.General ? parseNameValueLines(sections.General) : {}
@@ -146,7 +147,16 @@ export function textToEncounter(text:string):Encounter {
   const [instructionActions, characterTriggers] = _parseInstructionSection(sections.Instructions);
   const memories = _parseMemoriesSection(sections.Memories);
 
-  return {
-    version, title, model, startActions, instructionActions, characterTriggers, memories, sourceText:text 
-  };
+  return { version, title, model, startActions, instructionActions, characterTriggers, memories };
+}
+
+export function textToEncounterList(text:string, lastLoadedEncounterUrl:string|null):EncounterListV0 {
+  const version = parseEncounterListVersion(text); // Throws if missing/invalid.
+  const sections = parseSections(text);
+  if (!sections.Encounters) throw Error('Missing Encounters section');
+  const encounterEntries = parseNameValueLines(sections.Encounters);
+  const entries = Object.keys(encounterEntries).map(title => ({title, url:encounterEntries[title]}));
+  let lastEncounterI = lastLoadedEncounterUrl ? entries.findIndex(entry => entry.url === lastLoadedEncounterUrl) : null;
+  if (lastEncounterI === -1) lastEncounterI = null; // If the last loaded encounter isn't found, treat it as if there was no last loaded encounter.
+  return {version, entries, lastEncounterI};
 }

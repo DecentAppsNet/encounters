@@ -1,10 +1,9 @@
 import Encounter, { LATEST_MAJOR_VERSION } from "./types/Encounter";
-import { majorVersion, parseVersion } from "./versionUtil";
-import { textToEncounter } from "./v0/readerUtil";
+import { majorVersion, parseEncounterVersion } from "./versionUtil";
+import { textToEncounter, textToEncounterList } from "./v0/readerUtil";
 import { baseUrl } from "@/common/urlUtil";
 import CharacterTrigger from "./v0/types/CharacterTrigger";
-import VariableManager from "@/spielCode/VariableManager";
-import { executeCode } from "@/spielCode/codeUtil";
+import EncounterList from "./types/EncounterList";
 
 export function findCharacterTriggerInText(responseText:string, characterTriggers:CharacterTrigger[]):CharacterTrigger|null {
   if (!characterTriggers.length) return null;
@@ -39,7 +38,7 @@ export function stripTriggerCodes(responseText:string):string {
 }
 
 function _textToEncounter(text:string):Encounter {
-  const version = parseVersion(text);
+  const version = parseEncounterVersion(text);
   const majorVersionNo = majorVersion(version); // For now, only v0 is supported.
   if (majorVersionNo !== LATEST_MAJOR_VERSION) throw Error(`Unsupported encounter version: ${version}`);
   return textToEncounter(text);
@@ -53,11 +52,10 @@ export async function loadEncounter(encounterUrl:string):Promise<Encounter> {
   return _textToEncounter(text);
 }
 
-export async function enableConditionalCharacterTriggers(characterTriggers:CharacterTrigger[], sessionVariables:VariableManager) {
-  for(let i = 0; i < characterTriggers.length; ++i) {
-    const trigger = characterTriggers[i];
-    if (trigger.enabledCriteria === null) continue;
-    executeCode(trigger.enabledCriteria, sessionVariables);
-    trigger.isEnabled = sessionVariables.get('__result');
-  }
+export async function loadEncounterList(lastLoadedEncounterUrl:string):Promise<EncounterList> {
+  const url = baseUrl('encounters/encounterList.md');
+  const response = await fetch(url);
+  if (!response.ok) throw Error(`Failed to load from /encounter/encounterList.md`);
+  const text = await response.text();
+  return textToEncounterList(text, lastLoadedEncounterUrl);
 }

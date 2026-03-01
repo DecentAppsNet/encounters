@@ -1,7 +1,7 @@
 import LLMMessages from "@/llm/types/LLMMessages";
 import Encounter, { LATEST_MAJOR_VERSION } from "./types/Encounter";
 import VariableManager, { VariableCollection } from "@/spielCode/VariableManager";
-import { majorVersion, parseVersion } from "./versionUtil";
+import { majorVersion, parseEncounterVersion } from "./versionUtil";
 import { textToEncounter } from "./v0/readerUtil";
 import Action from "./v0/types/Action";
 import { assert, assertNonNullable } from "decent-portal";
@@ -18,7 +18,7 @@ type GenerateCallback = (messages:LLMMessages) => Promise<string>;
 type MessageCallback = (text:string) => void;
 
 function _textToEncounter(text:string):Encounter {
-  const version = parseVersion(text);
+  const version = parseEncounterVersion(text);
   const majorVersionNo = majorVersion(version); // For now, only v0 is supported.
   if (majorVersionNo !== LATEST_MAJOR_VERSION) throw Error(`Unsupported encounter version: ${version}`);
   return textToEncounter(text);
@@ -332,6 +332,10 @@ class EncounterSession {
 
   get title():string {
     return this._encounter?.title ?? 'undefined';
+  }
+
+  get encounter():Encounter|null {
+    return this._encounter;
   }
 }
 

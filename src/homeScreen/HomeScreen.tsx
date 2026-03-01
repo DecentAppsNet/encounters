@@ -6,28 +6,28 @@ import LoadScreen from '@/loadScreen/LoadScreen';
 import TopBar from '@/components/topBar/TopBar';
 import Chat from "@/components/chat/Chat";
 import { TextConsoleLine } from "@/components/textConsole/TextConsoleBuffer";
-import { restartEncounter, submitPrompt, updateEncounter } from "./interactions/chat";
+import { startFromUrl, submitPrompt } from "./interactions/chat";
 import Encounter from "@/encounters/types/Encounter";
 import ContentButton from "@/components/contentButton/ContentButton";
-import EncounterConfigDialog from "./dialogs/EncounterConfigDialog";
 import DiagnosticDialog from "./dialogs/DiagnosticDialog";
-import { importEncounterFile } from "./interactions/import";
-import { downloadEncounter } from "./interactions/export";
 import AboutDialog from "./dialogs/AboutDialog";
 import WrongModelDialog from "./dialogs/WrongModelDialog";
 import { getRecentPrompts } from "@/persistence/recentPrompts";
+import EncounterList from "@/encounters/types/EncounterList";
+import EncounterSelector from "./EncounterSelector";
 
 function HomeScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [lines, setLines] = useState<TextConsoleLine[]>([]);
   const [encounter, setEncounter] = useState<Encounter|null>(null);
+  const [encounterList, setEncounterList] = useState<EncounterList|null>(null);
   const [modalDialogName, setModalDialogName] = useState<string|null>(null);
   const [recentPrompts, setRecentPrompts] = useState<string[]>([]);
   
   useEffect(() => {
     if (isLoading) return;
 
-    init(setEncounter, setLines, setModalDialogName).then(isLlmConnected => { 
+    init(setEncounter, setEncounterList, setLines, setModalDialogName).then(isLlmConnected => { 
       if (!isLlmConnected) { setIsLoading(true); return; }
     });
   }, [isLoading]);
@@ -44,26 +44,14 @@ function HomeScreen() {
     <div className={styles.container}>
       <TopBar onAboutClick={() => setModalDialogName(AboutDialog.name)}/>
       <div className={styles.content}>
+        <EncounterSelector encounterList={encounterList} onSelect={(url) => startFromUrl(url, setLines, setEncounter)} />
         <h1>{encounter.title}</h1>
         <Chat className={styles.chat} lines={lines} onChatInput={(prompt) => submitPrompt(prompt, setRecentPrompts)} recentPrompts={recentPrompts} />
       </div>
       <div className={styles.encounterActions}>
         <h1>Encounter</h1>
-        <ContentButton onClick={() => restartEncounter()} text="Restart"/>
-        <ContentButton onClick={() => setModalDialogName(EncounterConfigDialog.name)} text="Edit" />
-        <ContentButton onClick={async () => { 
-          const nextEncounter = await importEncounterFile();
-          if (nextEncounter) updateEncounter(nextEncounter, setEncounter, setModalDialogName);
-        }} text="Import" />
-        <ContentButton onClick={() => downloadEncounter(encounter)} text="Download" />
         <ContentButton onClick={() => setModalDialogName(DiagnosticDialog.name)} text="Diagnostics" />
       </div>
-      <EncounterConfigDialog
-        isOpen={modalDialogName === EncounterConfigDialog.name}
-        encounter={encounter}
-        onCancel={() => setModalDialogName(null)}
-        onSave={(nextEncounter:Encounter) => { updateEncounter(nextEncounter, setEncounter, setModalDialogName); }}
-      />
       <DiagnosticDialog
         isOpen={modalDialogName === DiagnosticDialog.name}
         onClose={() => setModalDialogName(null)}

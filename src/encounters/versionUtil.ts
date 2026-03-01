@@ -8,15 +8,15 @@ import { isNumeric } from "@/common/regExUtil";
    Example:
    <!-- Encounter v1.0 -->
 */
-const PREFIX = "<!-- Encounter v";
 const SUFFIX = " -->";
-export function parseVersion(text:string):string {
+function _parseVersion(text:string, formatType:string):string {
   const endLinePos = text.indexOf('\n');
   const line = endLinePos === -1 ? text.trim() : text.substring(0, endLinePos).trim();
-  if (!line.startsWith(PREFIX)) throw Error('First line did not start with a valid version prefix.');
+  const prefix = `<!-- ${formatType} v`;
+  if (!line.startsWith(prefix)) throw Error('First line did not start with a valid version prefix.');
   if (!line.endsWith(SUFFIX)) throw Error('First line did not end with a valid version suffix.');
   
-  const version = line.substring(PREFIX.length, line.length - SUFFIX.length);
+  const version = line.substring(prefix.length, line.length - SUFFIX.length);
   if (version.length === 0) throw Error('Missing version# on first line.');
   
   let periodCount = 0;
@@ -27,6 +27,14 @@ export function parseVersion(text:string):string {
   }
   if (periodCount !== 1) throw Error('Version# is invalid format.');
   return version;
+}
+
+export function parseEncounterVersion(text:string):string {
+  return _parseVersion(text, 'Encounter');
+}
+
+export function parseEncounterListVersion(text:string):string {
+  return _parseVersion(text, 'EncounterList');
 }
 
 export function majorVersion(version:string):number {
