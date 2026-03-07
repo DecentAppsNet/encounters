@@ -21,7 +21,8 @@
     "@mlc-ai/web-tokenizers": "^0.1.6",
     "decent-portal": "^2.4.7",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "sl-web-speech": "^1.1.4"
   },
   "devDependencies": {
     "@types/chrome": "^0.1.24",
