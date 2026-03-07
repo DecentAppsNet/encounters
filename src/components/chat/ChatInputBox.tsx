@@ -21,6 +21,7 @@ function ChatInputBox(props:Props) {
   }, [recentPrompts])
   
   function _onSubmit() {
+    if (text === '') return;
     setRecentPromptI(recentPrompts.length);
     onSubmit(text); // Caller is responsible for adding prompt to recent prompts list.
     setText('');

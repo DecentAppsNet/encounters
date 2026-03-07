@@ -14,7 +14,7 @@ type Props = {
 function _onRenderLine(key:number, text:string) {
   let className = '';
   if (text === GENERATING_SUFFIX) {
-    return <WaitingEllipsis />
+    return <WaitingEllipsis key={key} />
   } else if (text.startsWith(PLAYER_PREFIX)) {
     text = text.substring(PLAYER_PREFIX.length);
     className = styles.playerLine;
