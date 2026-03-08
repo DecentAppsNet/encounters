@@ -8,7 +8,7 @@
   There is just one connection type for now: WebLLM, but this is abstracted for future CDA updates that may add other LLM providers.
 */
 
-import { assert, getAppMetaData, getAppSettings, updateModelDeviceLoadHistory, updateModelDevicePerformanceHistory } from "decent-portal";
+import { assert, getAppMetaData, updateModelDeviceLoadHistory, updateModelDevicePerformanceHistory } from "decent-portal";
 
 import LLMConnection from "./types/LLMConnection";
 import LLMConnectionState from "./types/LLMConnectionState";
@@ -68,12 +68,9 @@ export async function connect(modelId: string, onStatusUpdate: StatusUpdateCallb
     await noneLlmConnect(modelId, theConnection, onStatusUpdate);
   } else {
     const metadata = await getAppMetaData() as any;
-    const appSettings = await getAppSettings();
-
-    let inferenceFamily = metadata.inferenceFamily ?? 'mediapipe';
-    if (appSettings && appSettings['inferenceFamily'] !== undefined) {
-      inferenceFamily = appSettings['inferenceFamily'] ? 'mediapipe' : 'webllm';
-    }
+    const models = metadata.supportedModels ?? [];
+    const selectedModel = models.find((m: any) => m.id === modelId);
+    const inferenceFamily = selectedModel?.inferenceFamily ?? 'webllm';
 
     if (inferenceFamily === 'mediapipe') {
       if (!await mediapipeConnect(theConnection.modelId, theConnection, onStatusUpdate)) {
