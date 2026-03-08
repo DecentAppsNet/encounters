@@ -106,7 +106,12 @@ export async function generate(messages: LLMMessages, onStatusUpdate: StatusUpda
     case LLMConnectionType.NONE: message = await noneLlmGenerate(messages, _captureFirstResponse); break;
     default: throw Error('Unexpected');
   }
-  updateModelDevicePerformanceHistory(theConnection.modelId, requestTime, firstResponseTime, Date.now(), _inputCharCount(messages), message.length);
+  const endTime = Date.now();
+  const durationSeconds = (endTime - requestTime) / 1000;
+  const lastUserMessage = messages.chatHistory.filter(m => m.role === 'user').pop();
+  console.log(`${lastUserMessage?.content}\ntook ${durationSeconds.toFixed(1)} seconds to process`);
+
+  updateModelDevicePerformanceHistory(theConnection.modelId, requestTime, firstResponseTime, endTime, _inputCharCount(messages), message.length);
   theConnection.state = LLMConnectionState.READY;
   return message;
 }
