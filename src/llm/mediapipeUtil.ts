@@ -16,7 +16,7 @@ export async function mediapipeConnect(modelId: string, connection: LLMConnectio
         onStatusUpdate("Loading Mediapipe WASM...", 0.1);
 
         const genaiWasm = await FilesetResolver.forGenAiTasks(
-            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.19-rc.20241031/wasm" // usually people serve this locally, but we'll use jsdelivr for now, or maybe the node_modules path? But standard in web is jsdelivr unless we copy assets. Let's use standard jsdlivr if it's available or local node_modules via import mapping. We will use standard unpkg URL here.
+            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.26/wasm" // usually people serve this locally, but we'll use jsdelivr for now, or maybe the node_modules path? But standard in web is jsdelivr unless we copy assets. Let's use standard jsdlivr if it's available or local node_modules via import mapping. We will use standard unpkg URL here.
         );
 
         // We assume the modelId resolves to a valid URL for a bin file or we just use modelId directly.
