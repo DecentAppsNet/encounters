@@ -31,7 +31,7 @@
       "appBehaviorSummary": "The app still works, but you won't get any responses from the LLM."
     },
     {
-      "id": "gemma-3n-E2B-it-int4-Web.litertlm",
+      "id": "gemma-3n-e2b-it-int4-web.litertlm",
       "appBehaviorSummary": "Google LiteRT-LM Web-optimized model"
     }
   ],
