@@ -28,3 +28,6 @@ public/.vite
 *.njsproj
 *.sln
 *.sw?
+
+# Large LiteRT-LM model files
+public/litert-models/

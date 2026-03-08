@@ -32,7 +32,7 @@
     },
     {
       "id": "gemma-3n-e2b-it-int4-web.litertlm",
-      "appBehaviorSummary": "Google LiteRT-LM Web-optimized model"
+      "appBehaviorSummary": "Gemma 3n E2B (3GB) - Larger, more capable model"
     }
   ],
   "supportedModels": []

@@ -6,6 +6,19 @@ import { createChatHistory } from "./messageUtil";
 
 import { FilesetResolver, LlmInference } from "@mediapipe/tasks-genai";
 
+/**
+ * Mapping of model IDs (from app-metadata.json) to their actual download URLs.
+ * Add new entries here as more LiteRT-LM models become available.
+ */
+const MEDIAPIPE_MODEL_URLS: Record<string, string> = {
+    'gemma-3n-e2b-it-int4-web.litertlm':
+        '/litert-models/gemma-3n-E2B-it-int4-Web.litertlm'
+};
+
+function _resolveModelUrl(modelId: string): string {
+    return MEDIAPIPE_MODEL_URLS[modelId] ?? modelId; // fall back to treating modelId as a direct URL
+}
+
 /*
   Public APIs
 */
@@ -16,16 +29,14 @@ export async function mediapipeConnect(modelId: string, connection: LLMConnectio
         onStatusUpdate("Loading Mediapipe WASM...", 0.1);
 
         const genaiWasm = await FilesetResolver.forGenAiTasks(
-            "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-genai@0.10.26/wasm" // usually people serve this locally, but we'll use jsdelivr for now, or maybe the node_modules path? But standard in web is jsdelivr unless we copy assets. Let's use standard jsdlivr if it's available or local node_modules via import mapping. We will use standard unpkg URL here.
+            "/mediapipe-wasm" // Served locally from public/mediapipe-wasm/
         );
 
-        // We assume the modelId resolves to a valid URL for a bin file or we just use modelId directly.
-        // The instructions say "MediaPipe needs a `.bin` file in `modelAssetPath`, so we might need to adjust the model IDs in metadata to ensure it maps to valid URL paths later, but we can verify the API is called correctly with existing IDs for now"
-        onStatusUpdate("Initializing LlmInference...", 0.3);
+        const modelUrl = _resolveModelUrl(modelId);
+        onStatusUpdate("Initializing LiteRT-LM...", 0.3);
         connection.mediapipeEngine = await LlmInference.createFromOptions(genaiWasm, {
             baseOptions: {
-                // Just use modelId as path for now
-                modelAssetPath: modelId
+                modelAssetPath: modelUrl
             },
             // some default settings
             maxTokens: 512,
