@@ -57,6 +57,7 @@ function AudienceView({characterSpriteset}:Props) {
       
       // Row 2
       createCharacterDrawState(characterSpriteset, 'Clown', {x:60, y:100, w:128, h:256}, 2, 4),
+      createCharacterDrawState(characterSpriteset, 'Cat Lady', {x:170, y:110, w:128, h:256}, 2, 4),
     ];
     setCharacterDrawStates(nextCharacterDrawStates);
   }, [characterSpriteset]);

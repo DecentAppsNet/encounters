@@ -46,3 +46,10 @@
 * description=
 * bodyStartCellNo=21
 * bodyCellCount=4
+
+# Cat Lady
+
+* title=Cat Lady
+* description=
+* bodyStartCellNo=25
+* bodyCellCount=4
