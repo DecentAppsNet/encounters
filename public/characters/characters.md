@@ -30,13 +30,19 @@
 
 * title=Jock
 * description=Sports!
-* bodyStartCellNo=14
+* bodyStartCellNo=13
 * bodyCellCount=4
 
 # Barber
 
 * title=Barber
 * description=Cutting the hair, shaving, etc.
-* bodyStartCellNo=18
+* bodyStartCellNo=17
 * bodyCellCount=4
 
+# Clown
+
+* title=Clown
+* description=
+* bodyStartCellNo=21
+* bodyCellCount=4

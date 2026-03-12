@@ -23,7 +23,7 @@ function _getRandomInt(min:number, max:number):number {
 function _updateCrowdForIdleMovement(characterDrawStates:CharacterDrawState[]) {
   for(let i = 0; i < characterDrawStates.length; ++i) {
     const drawState = characterDrawStates[i];
-    drawState.bodyFrameNo = _getRandomInt(0, drawState.sprite.bodyRects.length-1);
+    drawState.bodyFrameNo = _getRandomInt(0, drawState.sprite.bodyRects.length);
     if (drawState.bodyFrameNo === 0) drawState.happiness = Math.random();
   }
 }
@@ -48,11 +48,15 @@ function AudienceView({characterSpriteset}:Props) {
   useEffect(() => {
     if (!characterSpriteset) return;
     const nextCharacterDrawStates = [
-      createCharacterDrawState(characterSpriteset, 'Jock', {x:0, y:100, w:128, h:256}, 2, 4),
-      createCharacterDrawState(characterSpriteset, 'Librarian', {x:110, y:90, w:128, h:256}, 2, 4),
-      createCharacterDrawState(characterSpriteset, 'Ice Skater', {x:220, y:100, w:128, h:256}, 2, 4),
-      createCharacterDrawState(characterSpriteset, 'Plumber', {x:330, y:90, w:128, h:256}, 2, 4),
-      createCharacterDrawState(characterSpriteset, 'Barber', {x:440, y:100, w:128, h:256}, 2, 4)
+      // Row 1
+      createCharacterDrawState(characterSpriteset, 'Jock', {x:0, y:70, w:128*.9, h:256*.9}, 2, 4),
+      createCharacterDrawState(characterSpriteset, 'Librarian', {x:110, y:80, w:128*.9, h:256*.9}, 2, 4),
+      createCharacterDrawState(characterSpriteset, 'Ice Skater', {x:220, y:70, w:128*.9, h:256*.9}, 2, 4),
+      createCharacterDrawState(characterSpriteset, 'Plumber', {x:330, y:80, w:128*.9, h:256*.9}, 2, 4),
+      createCharacterDrawState(characterSpriteset, 'Barber', {x:440, y:70, w:128*.9, h:256*.9}, 2, 4),
+      
+      // Row 2
+      createCharacterDrawState(characterSpriteset, 'Clown', {x:60, y:100, w:128, h:256}, 2, 4),
     ];
     setCharacterDrawStates(nextCharacterDrawStates);
   }, [characterSpriteset]);
