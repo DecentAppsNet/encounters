@@ -10,19 +10,23 @@ const appLinks = [
 const contributorText = 'Erik Hermansen, Peter Turner, Eduardo Worrel';
 
 type Props = {
-  onAboutClick:Function
+  onAboutClick: Function
 }
 
-function TopBar({onAboutClick}:Props) {
-  function _onClickLink(link:Link) {
+function TopBar({ onAboutClick }: Props) {
+  function _onClickLink(link: Link) {
     if (link.url === 'ABOUT') {
       onAboutClick();
       return;
     }
     defaultOnClickLink(link);
   }
-  
-  return <DecentBar appLinks={appLinks} contributorText={contributorText} onClickLink={_onClickLink}/>
+
+  return <DecentBar
+    appLinks={appLinks}
+    contributorText={contributorText}
+    onClickLink={_onClickLink}
+  />
 }
 
 export default TopBar;

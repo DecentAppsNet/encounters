@@ -1,5 +1,6 @@
 enum LLMConnectionType {
   WEBLLM,
+  MEDIAPIPE,
   NONE
 }
 
