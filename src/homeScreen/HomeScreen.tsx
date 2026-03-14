@@ -17,23 +17,6 @@ import EncounterList from "@/encounters/types/EncounterList";
 import EncounterSelector from "./EncounterSelector";
 import { isSpeechAvailable, isSpeechEnabled as getIsSpeechEnabled, initSpeech, toggleSpeech } from "@/speech/speechUtil";
 import MicrophonePermissionDialog from "@/loadScreen/MicrophonePermissionDialog";
-import { loadCharacterSpriteset } from "@/components/audienceView/characterSpriteUtil";
-import CharacterSpriteset from "@/components/audienceView/types/CharacterSpriteset";
-import AudienceView from "@/components/audienceView/AudienceView";
-import AudienceMember from "@/encounters/v0/types/AudienceMember";
-
-const showChat = false;
-
-// TODO load this from encounter
-const AUDIENCE_MEMBERS:AudienceMember[] = [
-  {characterId:'Jock', count:10, happiness:0.5, likes:[]},
-  {characterId:'Librarian', count:5, happiness:0.8, likes:[]},
-  {characterId:'Cat Lady', count:5, happiness:0.2, likes:[]},
-  {characterId:'Barber', count:10, happiness:0.5, likes:[]},
-  {characterId:'Plumber', count:5, happiness:0.8, likes:[]},
-  {characterId:'Clown', count:15, happiness:0.2, likes:[]},
-  {characterId:'Ice Skater', count:5, happiness:0.2, likes:[]},
-]
 
 function HomeScreen() {
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -43,14 +26,12 @@ function HomeScreen() {
   const [modalDialogName, setModalDialogName] = useState<string|null>(null);
   const [recentPrompts, setRecentPrompts] = useState<string[]>([]);
   const [isSpeechEnabled, setIsSpeechEnabled] = useState<boolean>(getIsSpeechEnabled());
-  const [characterSpriteset, setCharacterSpriteset] = useState<CharacterSpriteset|null>(null);
   
   useEffect(() => {
     if (isLoading) return;
 
-    init(setCharacterSpriteset, setEncounter, setEncounterList, setLines, setModalDialogName).then(isLlmConnected => { 
+    init(setEncounter, setEncounterList, setLines, setModalDialogName).then(isLlmConnected => { 
       if (!isLlmConnected) { setIsLoading(true); return; }
-      loadCharacterSpriteset('/characters/characters.md');
     });
   }, [isLoading]);
 
@@ -62,26 +43,22 @@ function HomeScreen() {
   if (isLoading) return <LoadScreen onComplete={() => setIsLoading(false)} />;
   if (!encounter) return null;
 
-  const chatContent = showChat ?
-    <Chat 
-        className={styles.chat} lines={lines} 
-        onChatInput={(prompt) => submitPrompt(prompt, setRecentPrompts)} 
-        recentPrompts={recentPrompts} 
-        isSpeechEnabled={isSpeechEnabled}
-        onToggleSpeech={() => {
-          if (!isSpeechAvailable()) { setModalDialogName('MicrophonePermissionDialog'); return; }
-          toggleSpeech(); setIsSpeechEnabled(getIsSpeechEnabled());
-        }}
-      /> : null;
-
   return (
     <div className={styles.container}>
       <TopBar onAboutClick={() => setModalDialogName(AboutDialog.name)}/>
       <div className={styles.content}>
         <EncounterSelector encounterList={encounterList} onSelect={(url) => startFromUrl(url, setLines, setEncounter)} />
         <h1>{encounter.title}</h1>
-        {chatContent}
-        <AudienceView characterSpriteset={characterSpriteset} audienceMembers={AUDIENCE_MEMBERS} />
+        <Chat 
+          className={styles.chat} lines={lines} 
+          onChatInput={(prompt) => submitPrompt(prompt, setRecentPrompts)} 
+          recentPrompts={recentPrompts} 
+          isSpeechEnabled={isSpeechEnabled}
+          onToggleSpeech={() => {
+            if (!isSpeechAvailable()) { setModalDialogName('MicrophonePermissionDialog'); return; }
+            toggleSpeech(); setIsSpeechEnabled(getIsSpeechEnabled());
+          }}
+        />
       </div>
       <div className={styles.encounterActions}>
         <h1>Encounter</h1>

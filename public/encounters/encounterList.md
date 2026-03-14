@@ -6,5 +6,4 @@ Add title/URL pairs below to populate the "short list" that is shown to user for
 * The Bridge Troll=/encounters/troll.md
 * Two Crooks=/encounters/twoCrooks.md
 * The Apartment=/encounters/apartment.md
-* Stump Speech=/encounters/stumpSpeech.md
 * The Oracle=/encounters/oracle.md

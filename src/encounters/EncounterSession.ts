@@ -194,21 +194,6 @@ class EncounterSession {
     return messagesAdded;
   }
 
-  private _appendAudienceMessagesToChatHistory(playerText:string) {
-    assertNonNullable(this._encounter);
-    if (!this._encounter.audience.length) return;
-    const words = playerText.split(' ').map(t => t.trim()).filter(t => t.length);
-    for(let wordI = 0; wordI < words.length; ++wordI) {
-      const word = words[wordI].toLowerCase();
-      for(let characterI = 0; characterI < this._encounter.audience.length; ++characterI) {
-        const character = this._encounter.audience[characterI];
-        if (character.likes.includes(word)) {
-          this._onCharacterMessage(`${character.name} likes "${word}"!`);
-        }
-      }
-    }
-  }
-
   private _updateSystemMessage() { // Important: not idempotent. Variable state can change in _handleActions().
     assertNonNullable(this._encounter);
     _enableConditionalCharacterTriggers(this._encounter.characterTriggers, this._variables, this._functionBindings);
@@ -270,7 +255,6 @@ class EncounterSession {
     if (!this._encounter) throw Error('No encounter loaded');
     addUserMessageToChatHistory(this._llmMessages, playerText);
     this._onPlayerMessage(playerText);
-    this._appendAudienceMessagesToChatHistory(playerText);
     const skipResponseHandling = this._appendMatchingMemoriesToChatHistory(playerText) || getConnectionModelId() === 'None';
     if (skipResponseHandling) return;
     await this._generateWithResponseHandling();
